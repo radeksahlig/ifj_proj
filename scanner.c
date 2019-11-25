@@ -1,6 +1,6 @@
 /*----------------------------------------------------
 ********************NOTES*****************************
-TODO INDENT/DEDENT pomocni zasobnik
+TODO process integer, float, string, keywords, id-s
 ----------------------------------------------------*/
 
 #include <stdio.h>
@@ -12,7 +12,7 @@ TODO INDENT/DEDENT pomocni zasobnik
 
 //Automat states
 #define START_STATE     100 
-#define IDKW_STATE      102
+#define IDKW_STATE      102 
 #define NUMBER_STATE    103
 #define STRING_STATE    104
 #define QUOTE_STATE     105
@@ -28,7 +28,7 @@ TODO INDENT/DEDENT pomocni zasobnik
 #define EXPONENT_E      117
 #define EXPONENT_NUMBER 118
 #define EXPONENT_SIGN   119
-#define DENT_COUNTING   120
+#define INDENTATION_COUNTING   120
 
 FILE *file;
 int indentation_stack[64];
@@ -58,7 +58,7 @@ int get_token(Token *token){
                 else if(c == ' '){
                     indentation_count++;
                     in_indentation = true;
-                    scanner_state = DENT_COUNTING;
+                    scanner_state = INDENTATION_COUNTING;
                 }
 
                 else if (c == '\n'){
@@ -89,6 +89,10 @@ int get_token(Token *token){
                 else if (c == '\"'){
                     scanner_state = QUOTE_STATE;
                     quote_count++;
+                }
+
+                else if(c == ':'){
+                    token->type = TOKEN_COLON;
                 }
 
                 else if (c == '+'){
@@ -138,17 +142,18 @@ int get_token(Token *token){
 
                 break;
 
-            case (DENT_COUNTING):
+            case (INDENTATION_COUNTING):
                 if (c == ' '){
                     indentation_count++;
                 }
                 else if(isspace(c) && c != ' '){
-                    scanner_state = DENT_COUNTING;
+                    scanner_state = INDENTATION_COUNTING;
                 }
                 else if(c == '\"')
                     scanner_state = QUOTE_STATE;
                 else{
-                    //TODO process dent_stack
+                    //TODO indentation ended, process it
+                    scanner_state = START_STATE; 
                 }
                 break;
 
@@ -306,7 +311,12 @@ int get_token(Token *token){
 
             case(DOC_STRING_STATE):
                 if(quote_count == 3){
-                    scanner_state = START_STATE;
+                    if(in_indentation){
+                        scanner_state = INDENTATION_COUNTING;
+                    }
+                    else{
+                        scanner_state = START_STATE;
+                    
                 }
                 else if (c != '\"' && quote_count > 0){
                     quote_count = 0;
