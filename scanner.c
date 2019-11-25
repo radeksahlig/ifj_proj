@@ -5,6 +5,7 @@ TODO INDENT/DEDENT pomocni zasobnik
 
 #include <stdio.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 #include "error.h"
 #include "scanner.h"
@@ -30,15 +31,15 @@ TODO INDENT/DEDENT pomocni zasobnik
 #define DENT_COUNTING   120
 
 FILE *file;
-int dent_stack[];
-dent_stack[0] = 0;
-
+int indentation_stack[64];
+indentation_stack[0] = 0;
+bool in_indentation = false;
 
 int get_token(Token *token){
 
     int scanner_state = START_STATE;
     int quote_count = 0;
-    int dent_count = 0;
+    int indentation_count = 0;
     char c;
     token->type = TOKEN_EMPTY_FILE;
 
@@ -55,13 +56,14 @@ int get_token(Token *token){
                 }
 
                 else if(c == ' '){
-                    dent_count++;
+                    indentation_count++;
+                    in_indentation = true;
                     scanner_state = DENT_COUNTING;
                 }
 
                 else if (c == '\n'){
                     token->type = TOKEN_EOL;
-                    dent_count = 0;
+                    indentation_count = 0;
                     return SCANNER_OK;
                 }
 
@@ -138,8 +140,13 @@ int get_token(Token *token){
 
             case (DENT_COUNTING):
                 if (c == ' '){
-                    dent_count++;
+                    indentation_count++;
                 }
+                else if(isspace(c) && c != ' '){
+                    scanner_state = DENT_COUNTING;
+                }
+                else if(c == '\"')
+                    scanner_state = QUOTE_STATE;
                 else{
                     //TODO process dent_stack
                 }
@@ -256,31 +263,31 @@ int get_token(Token *token){
 
                 break;
 
-            case (ESCAPE_CHAR_STATE){
+            case (ESCAPE_CHAR_STATE):
                 if(c == '"'){
                     c = '"';
                     //TODO store the char
                 }
                 else if(c == '\''){
-                    c = '\''
+                    c = '\'';
                     //TODO store the char
                 }
                 else if(c == 'n'){
-                    c = '\n'
+                    c = '\n';
                     //TODO store the char
                 }
                 else if(c == 't'){
-                    c = '\t'
+                    c = '\t';
                     //TODO store the char
                 }
                 else if(c == '\\'){
-                    c = '\\'
+                    c = '\\';
                     //TODO store the char
                 }
                 //TODO hexadecimal escape sequence '\xhh', where hh is a two digit hexadecimal number from 00 to FF ... other scanner states needed, cca +200 lines
                 
                 break;
-            }
+            
 
             case (QUOTE_STATE):
                 if (quote_count == 3){
