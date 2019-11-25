@@ -28,11 +28,11 @@ void BSTDispose(tBSTNodePtr *);
 
 
 typedef struct variable {
-    char* dataType;
+    int dataType;
 } tInsideVariable;
 
 typedef struct function {
-    char* returning;
+    int returning;
     bool declared;
     bool defined;
     char* parameters;
