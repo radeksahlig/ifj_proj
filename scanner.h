@@ -52,8 +52,8 @@ typedef union
 typedef struct{
     Token_type type;
     Token_attribute attribute;
-}Token
+}Token;
 
-int get_token(Token *token)
+int get_token(Token *token);
 
 #endif
