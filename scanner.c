@@ -6,8 +6,8 @@ TODO INDENT/DEDENT pomocni zasobnik
 #include <stdio.h>
 #include <ctype.h>
 
-#include <error.h>
-#include <scanner.h>
+#include "error.h"
+#include "scanner.h"
 
 //Automat states
 #define START_STATE     100 
