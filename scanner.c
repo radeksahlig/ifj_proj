@@ -1,6 +1,7 @@
 /*----------------------------------------------------
 ********************NOTES*****************************
 TODO process integer, float, string, keywords, id-s
+TODO implement the indentation stack.
 ----------------------------------------------------*/
 
 #include <stdio.h>
@@ -31,12 +32,12 @@ TODO process integer, float, string, keywords, id-s
 #define INDENTATION_COUNTING   120
 
 FILE *file;
-int indentation_stack[64];
-indentation_stack[0] = 0;
+int stack[64];
 bool in_indentation = false;
 
 int get_token(Token *token){
 
+    stack[0] = 0;
     int scanner_state = START_STATE;
     int quote_count = 0;
     int indentation_count = 0;
@@ -73,12 +74,12 @@ int get_token(Token *token){
                 }
                 
                 else if (c == '_' || isalpha(c)){
-                    //TODO save char to string
+                    //TODO save char to attribute
                     scanner_state = IDKW_STATE;
                 }
 
                 else if (isdigit(c)){
-                    //TODO save digit to string
+                    //TODO save digit to attribute
                     scanner_state = NUMBER_STATE;
                 }
 
@@ -159,7 +160,7 @@ int get_token(Token *token){
 
             case (IDKW_STATE):
                 if(isalnum(c) || c == '_'){ //next char is alphanumeric or '_'
-                    //TODO save char to string
+                    //TODO save char to attribute
                 }
                 else{
                     /*TODO IDKW ended, process it
@@ -180,7 +181,7 @@ int get_token(Token *token){
                 }
                 else if(tolower(c) == 'e'){
                     scanner_state = EXPONENT_E;
-                    //TODO save 'e' to string
+                    //TODO save 'e' to attribute
                 } 
                 else{
                     //TODO number ended, process it
@@ -206,7 +207,7 @@ int get_token(Token *token){
                 }
                 else if (tolower(c) == 'e'){
                     scanner_state = EXPONENT_E;
-                    //TODO save the 'e' to the string
+                    //TODO save the 'e' to the attribute
                 }
                 else{
                     //TODO number ended, store it
@@ -222,7 +223,7 @@ int get_token(Token *token){
                 }
                 else if(c == '+' || c == '-'){
                     scanner_state = EXPONENT_SIGN;
-                    //TODO save the sign to the string
+                    //TODO save the sign to the attribute
                 }
                 else{
                     return SCANNER_ERROR;
@@ -256,7 +257,7 @@ int get_token(Token *token){
                     //TODO store the "'"
                     return SCANNER_OK;
                 }
-                else if(c == "\\"){
+                else if(c == '\\'){
                     scanner_state = ESCAPE_CHAR_STATE; // for ’ \" ’, ’ \' ’, ’ \n ’, ’ \t ’, ’ \\ ’, others can be written directly
                 }
                 else if(c <= 31){
@@ -316,6 +317,7 @@ int get_token(Token *token){
                     }
                     else{
                         scanner_state = START_STATE;
+                    }
                     
                 }
                 else if (c != '\"' && quote_count > 0){
@@ -376,4 +378,9 @@ int get_token(Token *token){
         }
     }
 
+}
+
+int main(){
+    printf("Hello world! %d\n", stack[0]);
+    return 0;
 }
