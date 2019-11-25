@@ -177,18 +177,18 @@ int idkfunkce(tStack *stack, Token *help)
 			}
 			else
 			{
-				stackPush(stack,22)
+				stackPush(stack,22);
 				if (help->type == TOKEN_MUL)
 				{
-					stackPush(stack,12)
+					stackPush(stack,12);
 				}
 				else if (help->type == TOKEN_FLOAT_DIV)
 				{
-					stackPush(stack,13)
+					stackPush(stack,13);
 				}
 				else
 				{
-					stackPush(stack,14)
+					stackPush(stack,14);
 				}
 			}
 		}
@@ -200,34 +200,34 @@ int idkfunkce(tStack *stack, Token *help)
 			}
 			else if (top == 8 || top == 6)
 			{
-				stackPush(stack,22)
+				stackPush(stack,22);
 				if (help->type == TOKEN_LESS)
 				{
-					stackPush(stack,18)
+					stackPush(stack,18);
 				}
 				else if (help->type == TOKEN_LEQ)
 				{
-					stackPush(stack,17)
+					stackPush(stack,17);
 				}
 				else if (help->type == TOKEN_MORE)
 				{
-					stackPush(stack,16)
+					stackPush(stack,16);
 				}
 				else if (help->type == TOKEN_MEQ)
 				{
-					stackPush(stack,15)
+					stackPush(stack,15);
 				}
 				else if (help->type == TOKEN_EQ)
 				{
-					stackPush(stack,19)
+					stackPush(stack,19);
 				}
 				else if (help->type == TOKEN_NEQ)
 				{
-					stackPush(stack,21)
+					stackPush(stack,21);
 				}
 				else if (help->type == TOKEN_ASSIGN)
 				{
-					stackPush(stack,20)
+					stackPush(stack,20);
 				}
 			}
 			else
