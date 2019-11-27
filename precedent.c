@@ -16,7 +16,7 @@
     TOKEN_FLOAT,					3			
     TOKEN_STRING,					4
     TOKEN_EOF,						5
-    TOKEN_EOL, 						6
+    TOKEN_EOL, 						 6
     TOKEN_COMMA, // ,				7
     TOKEN_L_BRACKET, // (			8
     TOKEN_R_BRACKET, // )			9
