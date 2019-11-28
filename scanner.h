@@ -3,7 +3,8 @@
 
 #include <stdio.h>
 
-#include "dynamic_string.h" //TODO
+#include "string.h"
+#include "error.h"
 
 typedef enum{
     KEYWORD_DEF,
@@ -37,22 +38,33 @@ typedef enum{
     TOKEN_LEQ, // <=
     TOKEN_LESS, //<
     TOKEN_EQ, // ==
+    TOKEN_COLON, // :
     TOKEN_ASSIGN, // =
     TOKEN_NEQ, // !=
+    TOKEN_INDENT,
+    TOKEN_DEDENT,
 }Token_type;
 
 typedef union
 {
-    //TODO special string
+    Dynamic_string* string;
 	int integer; 
 	Keyword keyword; 
-	double decimal; 
+	double flt; 
 } Token_attribute;
 
 typedef struct{
     Token_type type;
     Token_attribute attribute;
 }Token;
+
+int free_the_stuff(int retval, Dynamic_string* d_str);
+
+int process_id(Dynamic_string* d_str, Token* token);
+
+int process_int(Dynamic_string* d_str, Token* token);
+
+int process_float(Dynamic_string* d_str, Token* token);
 
 int get_token(Token *token);
 

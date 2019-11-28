@@ -1,14 +1,14 @@
 /*----------------------------------------------------
 ********************NOTES*****************************
-TODO process integer, float, string, keywords, id-s
 TODO implement the indentation stack.
 ----------------------------------------------------*/
 
 #include <stdio.h>
 #include <ctype.h>
 #include <stdbool.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "error.h"
 #include "scanner.h"
 
 //Automat states
@@ -16,7 +16,7 @@ TODO implement the indentation stack.
 #define IDKW_STATE      102 
 #define NUMBER_STATE    103
 #define STRING_STATE    104
-#define QUOTE_STATE     105
+#define FIRST_QUOTE_BEG     105
 #define DIV_STATE       106
 #define DOC_STRING_STATE    107
 #define MORE_STATE      110
@@ -30,18 +30,118 @@ TODO implement the indentation stack.
 #define EXPONENT_NUMBER 118
 #define EXPONENT_SIGN   119
 #define INDENTATION_COUNTING   120
+#define INDENT_STATE    121
+#define DEDENT_STATE    122
+#define HEXA_FIRST_STATE    123
+#define HEXA_SECOND_STATE   124
+#define INT_DIV_STATE   126
+#define SECOND_QUOTE_BEG    127
+#define THIRD_QUOTE_BEG     128
+#define SECOND_QUOTE_END    129
+#define THIRD_QUOTE_END     130
+#define FIRST_QUOTE_END    131
+
+
 
 FILE *file;
-int stack[64];
+Dynamic_string* dynamic_str;
+
+int ind_stack[64];
 bool in_indentation = false;
+int top = 0;
+
+//stack functions
+int stack_pop(int stack[]) {
+    int num;
+    num = stack[top--];
+    return num;
+}
+
+void stack_push(int stack[], int num){
+    stack[++top] = num;
+}
+
+int free_the_stuff(int retval, Dynamic_string* d_str){
+    free(d_str->string);
+    return retval;
+}
+
+int process_id(Dynamic_string* d_str, Token* token){
+
+    if (!strcmp(d_str->string, "def"))
+        token->attribute.keyword = KEYWORD_DEF;
+
+    else if (!strcmp(d_str->string, "else"))
+        token->attribute.keyword = KEYWORD_ELSE;
+    
+    else if (!strcmp(d_str->string, "if"))
+        token->attribute.keyword = KEYWORD_IF;
+
+    else if (!strcmp(d_str->string, "None"))
+        token->attribute.keyword = KEYWORD_NONE;
+
+    else if (!strcmp(d_str->string, "pass"))
+        token->attribute.keyword = KEYWORD_PASS;
+
+    else if (!strcmp(d_str->string, "return"))
+        token->attribute.keyword = KEYWORD_RETURN;
+
+    else if (!strcmp(d_str->string, "while"))
+        token->attribute.keyword = KEYWORD_WHILE;
+
+    else{
+        token->type = TOKEN_ID;
+        if (!d_string_add_string(d_str, token->attribute.string)){
+            return free_the_stuff(INTERNAL_ERROR, d_str);
+        }
+    }
+
+    token->type = TOKEN_KEYWORD;
+    return free_the_stuff(SCANNER_OK, d_str);
+
+
+    
+}
+
+int process_int(Dynamic_string* d_str, Token* token){
+    char *endptr;
+    int integer = strtol(d_str->string, &endptr, 10);
+    token->type = TOKEN_INTEGER;
+    token->attribute.integer = integer;
+    return free_the_stuff(SCANNER_OK, d_str);
+}
+
+int process_float(Dynamic_string* d_str, Token* token){
+    char *endptr;
+    double flt = strtod(d_str->string, &endptr);
+    token->type = TOKEN_FLOAT;
+    token->attribute.flt = flt;
+    return free_the_stuff(SCANNER_OK, d_str);
+}
 
 int get_token(Token *token){
+    
 
-    stack[0] = 0;
+    if(file == NULL || dynamic_str == NULL){
+        return INTERNAL_ERROR;        
+    }
+
+    token->attribute.string = dynamic_str;
+
+
+    ind_stack[top] = 0;
     int scanner_state = START_STATE;
-    int quote_count = 0;
     int indentation_count = 0;
     char c;
+    char hexa[2] = { 0 };
+    
+    Dynamic_string string;
+	Dynamic_string *str = &string;
+
+    if(!d_string_init(str)){
+        return INTERNAL_ERROR;
+    }
+    
     token->type = TOKEN_EMPTY_FILE;
 
     while (true){
@@ -57,7 +157,11 @@ int get_token(Token *token){
                 }
 
                 else if(c == ' '){
-                    indentation_count++;
+                    
+                    if(ind_stack[top] < ++indentation_count){
+                        stack_push(ind_stack, indentation_count);
+                    }
+                    
                     in_indentation = true;
                     scanner_state = INDENTATION_COUNTING;
                 }
@@ -65,21 +169,29 @@ int get_token(Token *token){
                 else if (c == '\n'){
                     token->type = TOKEN_EOL;
                     indentation_count = 0;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == EOF){
                     token->type = TOKEN_EOF;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
                 
                 else if (c == '_' || isalpha(c)){
-                    //TODO save char to attribute
+                    
+                    if(!d_string_add_char(str, (char) c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+
                     scanner_state = IDKW_STATE;
                 }
 
                 else if (isdigit(c)){
-                    //TODO save digit to attribute
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+
                     scanner_state = NUMBER_STATE;
                 }
 
@@ -88,8 +200,7 @@ int get_token(Token *token){
                 }
 
                 else if (c == '\"'){
-                    scanner_state = QUOTE_STATE;
-                    quote_count++;
+                    scanner_state = SECOND_QUOTE_BEG;
                 }
 
                 else if(c == ':'){
@@ -98,17 +209,17 @@ int get_token(Token *token){
 
                 else if (c == '+'){
                     token->type = TOKEN_PLUS;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == '-'){
                     token->type = TOKEN_MINUS;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == '*'){
                     token->type = TOKEN_MUL;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == '/'){
@@ -133,58 +244,79 @@ int get_token(Token *token){
 
                 else if (c == ','){
                     token->type = TOKEN_COMMA;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == '('){
                     token->type = TOKEN_L_BRACKET;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 break;
 
             case (INDENTATION_COUNTING):
                 if (c == ' '){
-                    indentation_count++;
+                    
+                    if(ind_stack[top] < ++indentation_count){
+                        stack_push(ind_stack, indentation_count);
+                    }
                 }
                 else if(isspace(c) && c != ' '){
                     scanner_state = INDENTATION_COUNTING;
                 }
                 else if(c == '\"')
-                    scanner_state = QUOTE_STATE;
+                    scanner_state = SECOND_QUOTE_BEG;
                 else{
                     //TODO indentation ended, process it
+                    if(indentation_count < ind_stack[top]){
+                        scanner_state = DEDENT_STATE;
+                    }
                     scanner_state = START_STATE; 
                 }
                 break;
 
             case (IDKW_STATE):
                 if(isalnum(c) || c == '_'){ //next char is alphanumeric or '_'
-                    //TODO save char to attribute
+                     
+                     if(!d_string_add_char(str, (char) c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    /*TODO IDKW ended, process it
+                    /*IDKW ended, process it
                     in case of keyword match:   token->type = TOKEN_KEYWORD
                     other cases:                token->type = TOKEN_ID
                     */
+                   ungetc(c,file);
+                   return process_id(str, token);
                 }
 
                 break;
             
             case (NUMBER_STATE):
                 if(isdigit(c)){
-                    //TODO store the current digit
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else if(c == '.'){
                     scanner_state = DECIMAL_BEGIN_STATE;
-                    //TODO store the point
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else if(tolower(c) == 'e'){
                     scanner_state = EXPONENT_E;
-                    //TODO save 'e' to attribute
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 } 
                 else{
-                    //TODO number ended, process it
+                    ungetc(c,file);
+                    return process_int(str, token);
                 }
 
                 break;
@@ -192,10 +324,13 @@ int get_token(Token *token){
             case (DECIMAL_BEGIN_STATE):
                 if(isdigit(c)){
                     scanner_state = DECIMAL_STATE;
-                    //TODO store the current digit
+                   
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    return SCANNER_ERROR;
+                    return free_the_stuff(SCANNER_ERROR, str);
                 }
 
                 break;
@@ -203,15 +338,21 @@ int get_token(Token *token){
             case (DECIMAL_STATE):
                 if(isdigit(c)){
                     scanner_state = DECIMAL_STATE; //stay in this state, might be unnecessary
-                    //TODO store the digit
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else if (tolower(c) == 'e'){
                     scanner_state = EXPONENT_E;
-                    //TODO save the 'e' to the attribute
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    //TODO number ended, store it
-                    token->type = TOKEN_FLOAT;
+                    ungetc(c, file);
+                    return process_float(str, token);
                 }
                 
                 break;
@@ -219,14 +360,20 @@ int get_token(Token *token){
             case (EXPONENT_E):
                 if(isdigit(c)){
                     scanner_state = EXPONENT_NUMBER;
-                    //TODO store the number 
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else if(c == '+' || c == '-'){
                     scanner_state = EXPONENT_SIGN;
-                    //TODO save the sign to the attribute
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    return SCANNER_ERROR;
+                    return free_the_stuff(SCANNER_ERROR, str);
                 }
                 
                 break;
@@ -234,145 +381,249 @@ int get_token(Token *token){
             case (EXPONENT_SIGN):
                 if(isdigit(c)){
                     scanner_state = EXPONENT_NUMBER;
-                    //TODO store the number
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    return SCANNER_ERROR;
+                    return free_the_stuff(SCANNER_ERROR, str);
                 }
                 break;
 
             case (EXPONENT_NUMBER):
                 if(isdigit(c)){
-                    //TODO store the number
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    //TODO number ended, process it
-                    token->type = TOKEN_FLOAT;
+                    ungetc(c,file);
+                    return process_float(str, token);
                 }
                 break;
 
             case (STRING_STATE):
                 if(c == '\''){ //string ended
+                    
+                    if(!d_string_add_string(str, token->attribute.string)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+
                     token->type = TOKEN_STRING;
-                    //TODO store the "'"
-                    return SCANNER_OK;
                 }
                 else if(c == '\\'){
                     scanner_state = ESCAPE_CHAR_STATE; // for ’ \" ’, ’ \' ’, ’ \n ’, ’ \t ’, ’ \\ ’, others can be written directly
                 }
                 else if(c <= 31){
-                    return SCANNER_ERROR;
+                    return free_the_stuff(SCANNER_ERROR, str);
                 }
                 else{ //anything else simply belongs to the string
-                    //TODO store the string
+                    
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
 
                 break;
 
             case (ESCAPE_CHAR_STATE):
+                
+                if(c <= 31){
+                    return free_the_stuff(SCANNER_ERROR, str);
+                }
                 if(c == '"'){
                     c = '"';
-                    //TODO store the char
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    scanner_state = STRING_STATE;
                 }
                 else if(c == '\''){
                     c = '\'';
-                    //TODO store the char
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    scanner_state = STRING_STATE;
                 }
                 else if(c == 'n'){
                     c = '\n';
-                    //TODO store the char
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    scanner_state = STRING_STATE;
                 }
                 else if(c == 't'){
                     c = '\t';
-                    //TODO store the char
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    scanner_state = STRING_STATE;
                 }
                 else if(c == '\\'){
                     c = '\\';
-                    //TODO store the char
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    scanner_state = STRING_STATE;
                 }
-                //TODO hexadecimal escape sequence '\xhh', where hh is a two digit hexadecimal number from 00 to FF ... other scanner states needed, cca +200 lines
-                
-                break;
-            
-
-            case (QUOTE_STATE):
-                if (quote_count == 3){
-                    quote_count = 0;
-                    scanner_state = DOC_STRING_STATE;
+                //hexadecimal escape sequence '\xhh', where hh is a two digit hexadecimal number from 00 to FF
+                else if(c == 'x'){
+                    scanner_state = HEXA_FIRST_STATE;
                 }
-                else if (c == '\"'){
-                    quote_count++;
-                    scanner_state = QUOTE_STATE;
+                else if(isalpha(c) || isdigit(c)){
+                    if(!d_string_add_char(str, '\\')){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    if(!d_string_add_char(str, c)){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
                 }
                 else{
-                    return SCANNER_ERROR;
-                }   
+                    return free_the_stuff(SCANNER_ERROR, str);
+                }
+                
+                break;
+
+            case (HEXA_FIRST_STATE):
+                if(isdigit(c) || tolower(c) == 'a' || tolower(c) == 'b' || tolower(c) == 'c' || tolower(c) == 'd' || tolower(c) == 'e' || tolower(c) == 'f'){
+                    hexa[0] = (char) c;
+                    scanner_state = HEXA_SECOND_STATE;
+                }
+                else{
+                    return free_the_stuff(SCANNER_ERROR, str);
+                }
+
+                break;
+
+            case (HEXA_SECOND_STATE):
+                if(isdigit(c) || tolower(c) == 'a' || tolower(c) == 'b' || tolower(c) == 'c' || tolower(c) == 'd' || tolower(c) == 'e' || tolower(c) == 'f'){
+                    hexa[1] = (char) c;
+                    char* endptr;
+                    int conv = strtol(hexa, &endptr, 16);
+                    c = (char) conv;
+                    
+                    if(!d_string_add_char(str, 'c')){
+                        return free_the_stuff(INTERNAL_ERROR, str);
+                    }
+                    
+                    scanner_state = STRING_STATE;
+                }
+                else{
+                    return free_the_stuff(SCANNER_ERROR, str);
+                }
+
+                break;
+
+
+            case (SECOND_QUOTE_BEG):
+                if(c == '"'){
+                    scanner_state = THIRD_QUOTE_BEG;
+                }
+                else{
+                    free_the_stuff(SCANNER_ERROR,str);
+                }
+
+                break;
+
+            case (THIRD_QUOTE_BEG):
+                if(c == '"'){
+                    scanner_state = DOC_STRING_STATE;
+                }
+                else{
+                    free_the_stuff(SCANNER_ERROR,str);
+                }
 
                 break;
 
             case(DOC_STRING_STATE):
-                if(quote_count == 3){
-                    if(in_indentation){
-                        scanner_state = INDENTATION_COUNTING;
-                    }
-                    else{
-                        scanner_state = START_STATE;
-                    }
-                    
+                if(c == '"'){
+                    scanner_state = SECOND_QUOTE_END;
                 }
-                else if (c != '\"' && quote_count > 0){
-                    quote_count = 0;
+                else{
+                    scanner_state = DOC_STRING_STATE;
                 }
-                else if (c == '\"'){
-                    quote_count++;
+                               
+                break;
+
+
+            case (SECOND_QUOTE_END):
+                if(c == '"'){
+                    scanner_state = THIRD_QUOTE_END;
                 }
-                else if (c == EOF){
-                    return SCANNER_ERROR;
+                else{
+                    scanner_state = DOC_STRING_STATE;
                 }
-                
+
+                break;
+
+            case (THIRD_QUOTE_END):
+                if(c == '"'){
+                    scanner_state = START_STATE;
+                }
+                else{
+                    scanner_state = DOC_STRING_STATE;
+                }
+
                 break;
 
             case (DIV_STATE):
                 /*  in case of '/' : token->type = TOKEN_FLOAT_DIV;
                     in case of '//': token->type = TOKEN_INT_DIV;
                 */
+               if(c != '/'){
+                   ungetc(c, file);
+                   token->type = TOKEN_FLOAT_DIV;
+                   return free_the_stuff(SCANNER_OK, str);
+               }
+               else if (c == '/'){
+                   token->type = TOKEN_INT_DIV;
+                   return free_the_stuff(SCANNER_OK, str);
+               }
+               break;
 
 
             case (MORE_STATE):
                 if (c == '='){
                     token->type = TOKEN_MEQ;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
                 else{
+                    ungetc(c, file);
                     token->type = TOKEN_MORE;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
-                return SCANNER_OK;
-                
+
             
             case (LESS_STATE):
                 if (c == '='){
                     token->type = TOKEN_LEQ;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
                 else{
+                    ungetc(c, file);
                     token->type = TOKEN_LESS;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
-                return SCANNER_OK;
 
             case (EQ_STATE):
                 if (c == '='){
                     token->type = TOKEN_EQ;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
                 else{
                     token->type = TOKEN_ASSIGN;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
-                return SCANNER_OK;
 
             case (NEQ_STATE):
                 if (c == '='){
                     token->type = TOKEN_NEQ;
-                    return SCANNER_OK;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
                 else{
-                    return SCANNER_ERROR;
+                    return free_the_stuff(SCANNER_ERROR, str);
                 }
             
         }
@@ -381,6 +632,5 @@ int get_token(Token *token){
 }
 
 int main(){
-    printf("Hello world! %d\n", stack[0]);
     return 0;
 }
