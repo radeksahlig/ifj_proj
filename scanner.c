@@ -12,34 +12,35 @@ TODO implement the indentation stack.
 #include "scanner.h"
 
 //Automat states
-#define START_STATE     100 
-#define IDKW_STATE      102 
-#define NUMBER_STATE    103
-#define STRING_STATE    104
+#define START_STATE         100 
+#define IDKW_STATE          102 
+#define NUMBER_STATE        103
+#define STRING_STATE        104
 #define FIRST_QUOTE_BEG     105
-#define DIV_STATE       106
+#define DIV_STATE           106
 #define DOC_STRING_STATE    107
-#define MORE_STATE      110
-#define LESS_STATE      111
-#define EQ_STATE        112
-#define NEQ_STATE       113
-#define DECIMAL_BEGIN_STATE   114
-#define DECIMAL_STATE   115
+#define MORE_STATE          110
+#define LESS_STATE          111
+#define EQ_STATE            112
+#define NEQ_STATE           113
+#define DECIMAL_BEGIN_STATE 114
+#define DECIMAL_STATE       115
 #define ESCAPE_CHAR_STATE   116
-#define EXPONENT_E      117
-#define EXPONENT_NUMBER 118
-#define EXPONENT_SIGN   119
+#define EXPONENT_E          117
+#define EXPONENT_NUMBER     118
+#define EXPONENT_SIGN       119
 #define INDENTATION_COUNTING   120
-#define INDENT_STATE    121
-#define DEDENT_STATE    122
+#define INDENT_STATE        121
+#define DEDENT_STATE        122
 #define HEXA_FIRST_STATE    123
 #define HEXA_SECOND_STATE   124
-#define INT_DIV_STATE   126
+#define INT_DIV_STATE       126
 #define SECOND_QUOTE_BEG    127
 #define THIRD_QUOTE_BEG     128
 #define SECOND_QUOTE_END    129
 #define THIRD_QUOTE_END     130
-#define FIRST_QUOTE_END    131
+#define FIRST_QUOTE_END     131
+#define LINE_COMMENT        132
 
 
 
@@ -155,7 +156,7 @@ int get_token(Token *token){
                 if(isspace(c) && c != ' '){
                     scanner_state = START_STATE;
                 }
-
+                //TODO still that goddamn stack >:(
                 else if(c == ' '){
                     
                     if(ind_stack[top] < ++indentation_count){
@@ -195,6 +196,10 @@ int get_token(Token *token){
                     scanner_state = NUMBER_STATE;
                 }
 
+                else if (c == '#'){
+                    scanner_state = LINE_COMMENT;
+                }
+                
                 else if (c == '\''){
                     scanner_state = STRING_STATE;
                 }
@@ -516,6 +521,12 @@ int get_token(Token *token){
 
                 break;
 
+            case(LINE_COMMENT):
+                if(c == EOL){
+                    scanner_state = START_STATE;
+                }
+                
+                break;
 
             case (SECOND_QUOTE_BEG):
                 if(c == '"'){
