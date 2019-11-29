@@ -141,6 +141,10 @@ int process_float(Dynamic_string* d_str, Token* token){
 }
 //--------------------------------
 
+void set_d_string(Dynamic_string* d_str){
+	dynamic_string = d_str;
+}
+
 //Main function
 int get_token(Token *token){
     
