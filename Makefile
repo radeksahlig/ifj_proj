@@ -1,8 +1,29 @@
-CC = gcc
-CFLAGS = -std=c99 -Wall -Wextra
+NAME=ifj19comp
+SRCFOLDER := src
+OBJFOLDER := obj
+SRCFILES := $(wildcard $(SRCFOLDER)/*.c)
+OBJFILES := $(patsubst %.c,$(OBJFOLDER)/%.o,$(notdir $(SRCFILES)))
+CC=gcc
+CFLAGS= -std=c99 -pedantic -Wall -Wextra -g
 
-EXECUTABLE = ifj19comp
-SRCS = *.c
-OBJS = $(shell $(CC) $(CFLAGS) -MM $(SRCS) | grep ':' | cut -d ':' -f1 | tr '\n' ' ')
+all: $(NAME)
 
-$(EXECUTABLE): $(OBJS)
+$(OBJFOLDER)/%.o : $(SRCFOLDER)/%.c
+	mkdir -p $(OBJFOLDER)
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+
+clean:
+	rm -rf $(OBJFOLDER)/
+	rm -f $(NAME)
+
+test:
+	./$(NAME) vita
+
+dep:
+	$(CC) -MM $(SRCFOLDER)/*.c >dep.list
+
+-include dep.list
+
+$(NAME): $(OBJFILES)
+	$(CC) $(CFLAGS) $(OBJFILES) -o $@
