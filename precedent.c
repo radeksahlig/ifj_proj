@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <scanner.h>
-#include <scanner.c>
+#include "scanner.h"
 /*
 		TODO funkce na ziskani top terminalu
 		TODO funkce na doplneni zacatku rozvoje za top terminal // rozvoj(tStack, int)
