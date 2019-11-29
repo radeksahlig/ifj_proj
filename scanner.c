@@ -178,7 +178,6 @@ int get_token(Token *token){
                 if(isspace(c) && !new_line){
                     scanner_state = START_STATE;
                 }
-                //TODO still that goddamn stack >:(
                 else if(c == ' ' && new_line){    
                     new_line = false;
                     in_indentation = true;
