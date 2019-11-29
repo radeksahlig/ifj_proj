@@ -2,6 +2,7 @@
 #define _SCANNER_H
 
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "string.h"
 #include "error.h"
@@ -45,8 +46,7 @@ typedef enum{
     TOKEN_DEDENT,
 }Token_type;
 
-typedef union
-{
+typedef union{
     Dynamic_string* string;
 	int integer; 
 	Keyword keyword; 
@@ -57,6 +57,16 @@ typedef struct{
     Token_type type;
     Token_attribute attribute;
 }Token;
+
+typedef struct stack_item{
+    int value;
+    struct stack_item* next; 
+}  Simple_stack_item;
+
+
+typedef struct{
+    Simple_stack_item* top;
+} Simple_stack;
 
 int free_the_stuff(int retval, Dynamic_string* d_str);
 
