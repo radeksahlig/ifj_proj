@@ -47,12 +47,18 @@ FILE *file;
 Dynamic_string* dynamic_str;
 bool in_indentation = false;
 Simple_stack* indentation_stack;
+bool new_line = true;
 
 
 //stack functions
 void stack_init(Simple_stack* stack){
     stack->top->value = 0;
     stack->top->next = NULL;
+}
+
+void set_stack(Simple_stack* stack){
+    indentation_stack = stack;
+    stack_init(indentation_stack);
 }
 
 void stack_pop(Simple_stack* stack) {
@@ -79,6 +85,9 @@ bool stack_push(Simple_stack* stack, int num){
 
 //------------------------
 
+void set_file(FILE* fil){
+    file = fil;
+}
 
 int free_the_stuff(int retval, Dynamic_string* d_str){
     free(d_str->string);
@@ -143,6 +152,7 @@ void set_d_string(Dynamic_string* d_str){
 	dynamic_str = d_str;
 }
 
+
 //Main function
 int get_token(Token *token){
     
@@ -156,7 +166,6 @@ int get_token(Token *token){
 
     int scanner_state = START_STATE;
     int indentation_count = 0;
-    bool new_line = true;
     char c;
     char hexa[2];
     
@@ -177,11 +186,10 @@ int get_token(Token *token){
             
             case(START_STATE):
                 
-                if(isspace(c) && !new_line){
+                if((isspace(c) && !new_line) || (isspace(c) && c != ' ' && new_line)){
                     scanner_state = START_STATE;
                 }
                 else if(c == ' ' && new_line){    
-                    new_line = false;
                     in_indentation = true;
                     scanner_state = INDENTATION_COUNTING;
 
@@ -288,6 +296,8 @@ int get_token(Token *token){
                     token->type = TOKEN_R_BRACKET;
                     return free_the_stuff(SCANNER_OK, str);
                 }
+                
+                new_line = false;
 
                 break;
 
