@@ -1,6 +1,6 @@
 /*----------------------------------------------------
 ********************NOTES*****************************
-TODO implement the indentation stack.
+
 ----------------------------------------------------*/
 
 #include <stdio.h>
@@ -467,6 +467,7 @@ int get_token(Token *token){
                     }
 
                     token->type = TOKEN_STRING;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
                 else if(c == '\\'){
                     scanner_state = ESCAPE_CHAR_STATE; // for ’ \" ’, ’ \' ’, ’ \n ’, ’ \t ’, ’ \\ ’, others can be written directly
