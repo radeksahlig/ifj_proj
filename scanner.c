@@ -142,7 +142,7 @@ int process_float(Dynamic_string* d_str, Token* token){
 //--------------------------------
 
 void set_d_string(Dynamic_string* d_str){
-	dynamic_string = d_str;
+	dynamic_str = d_str;
 }
 
 //Main function
