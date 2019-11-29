@@ -44,9 +44,11 @@ bool d_string_add_string(Dynamic_string* d_str, Dynamic_string* attribute_str){
         if(attribute_str->string == NULL){
             return false;
         }
-
-        strcpy(d_str->string, attribute_str->string);
-        attribute_str->length = d_str->length;
+        attribute_str->size = d_str->length + 1;
     }
+    strcpy(d_str->string, attribute_str->string);
+    attribute_str->length = d_str->length;
+
+    return true;
 }
 
