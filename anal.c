@@ -2,6 +2,7 @@
 
 #include "error.h"
 #include "scanner.h"
+#include "precedent.c"
 
 #define GET_TOKEN_CHECK_TYPE(_type) do{\
     GET_TOKEN();\
