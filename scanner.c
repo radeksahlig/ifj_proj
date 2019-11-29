@@ -236,6 +236,7 @@ int get_token(Token *token){
 
                 else if(c == ':'){
                     token->type = TOKEN_COLON;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == '+'){
@@ -280,6 +281,11 @@ int get_token(Token *token){
 
                 else if (c == '('){
                     token->type = TOKEN_L_BRACKET;
+                    return free_the_stuff(SCANNER_OK, str);
+                }
+
+                else if (c == ')'){
+                    token->type = TOKEN_R_BRACKET;
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
