@@ -1,5 +1,5 @@
 NAME=ifj19comp
-SRCFOLDER := src
+SRCFOLDER := .
 OBJFOLDER := obj
 SRCFILES := $(wildcard $(SRCFOLDER)/*.c)
 OBJFILES := $(patsubst %.c,$(OBJFOLDER)/%.o,$(notdir $(SRCFILES)))
