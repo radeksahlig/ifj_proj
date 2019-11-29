@@ -1,6 +1,6 @@
 /*----------------------------------------------------
 ********************NOTES*****************************
-
+TODO implement the indentation stack.
 ----------------------------------------------------*/
 
 #include <stdio.h>
@@ -115,13 +115,11 @@ int process_id(Dynamic_string* d_str, Token* token){
         if (!d_string_add_string(d_str, token->attribute.string)){
             return free_the_stuff(INTERNAL_ERROR, d_str);
         }
+        return free_the_stuff(SCANNER_OK, d_str);
     }
 
     token->type = TOKEN_KEYWORD;
-    return free_the_stuff(SCANNER_OK, d_str);
-
-
-    
+    return free_the_stuff(SCANNER_OK, d_str);   
 }
 
 int process_int(Dynamic_string* d_str, Token* token){
