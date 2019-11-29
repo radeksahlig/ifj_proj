@@ -154,6 +154,7 @@ int get_token(Token *token){
 
     int scanner_state = START_STATE;
     int indentation_count = 0;
+    bool new_line = true;
     char c;
     char hexa[2];
     
@@ -174,11 +175,12 @@ int get_token(Token *token){
             
             case(START_STATE):
                 
-                if(isspace(c) && c != ' '){
+                if(isspace(c) && !new_line){
                     scanner_state = START_STATE;
                 }
                 //TODO still that goddamn stack >:(
-                else if(c == ' '){    
+                else if(c == ' ' && new_line){    
+                    new_line = false;
                     in_indentation = true;
                     scanner_state = INDENTATION_COUNTING;
 
@@ -192,6 +194,7 @@ int get_token(Token *token){
                 else if (c == '\n'){
                     token->type = TOKEN_EOL;
                     indentation_count = 0;
+                    new_line = true;
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
