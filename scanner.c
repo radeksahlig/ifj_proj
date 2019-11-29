@@ -56,11 +56,6 @@ void stack_init(Simple_stack* stack){
     stack->top->next = NULL;
 }
 
-void set_stack(Simple_stack* stack){
-    indentation_stack = stack;
-    stack_init(indentation_stack);
-}
-
 void stack_pop(Simple_stack* stack) {
     Simple_stack_item* popped = stack->top;
     int retval = popped->value;        
@@ -85,9 +80,6 @@ bool stack_push(Simple_stack* stack, int num){
 
 //------------------------
 
-void set_file(FILE* fil){
-    file = fil;
-}
 
 int free_the_stuff(int retval, Dynamic_string* d_str){
     free(d_str->string);
@@ -152,10 +144,20 @@ void set_d_string(Dynamic_string* d_str){
 	dynamic_str = d_str;
 }
 
+void set_file(FILE* fil){
+	file = fil;
+}
+
+void set_stack(Simple_stack* stack){
+	indentation_stack = stack;
+	Simple_stack_item* new_item = (Simple_stack_item*)malloc(sizeof(Simple_stack_item));
+	indentation_stack->top = new_item;
+	stack_init(indentation_stack);
+}
 
 //Main function
 int get_token(Token *token){
-    
+    //printf("## in token ##\n");
 
     if(file == NULL || dynamic_str == NULL){
         return INTERNAL_ERROR;        
@@ -181,30 +183,31 @@ int get_token(Token *token){
     while (true){
         
         c = (char) getc(file);
-
+	    //printf("%c -> char %d\n", c, scanner_state);
         switch(scanner_state){
             
             case(START_STATE):
-                
-                if((isspace(c) && !new_line) || (isspace(c) && c != ' ' && new_line)){
+
+
+                if (c == '\n'){
+                    token->type = TOKEN_EOL;
+                    indentation_count = 0;
+                    new_line = true;
+                    return free_the_stuff(SCANNER_OK, str);
+                }
+		else if(isspace(c) && !new_line){
                     scanner_state = START_STATE;
                 }
-                else if(c == ' ' && new_line){    
+                else if(c == ' ' && new_line){
+                    new_line = false;
                     in_indentation = true;
                     scanner_state = INDENTATION_COUNTING;
-
+			 
                     if(indentation_stack->top->value < ++indentation_count){
                         stack_push(indentation_stack, indentation_count);
                         token->type = TOKEN_INDENT;
                         return free_the_stuff(SCANNER_OK, str);
                     }
-                }
-
-                else if (c == '\n'){
-                    token->type = TOKEN_EOL;
-                    indentation_count = 0;
-                    new_line = true;
-                    return free_the_stuff(SCANNER_OK, str);
                 }
 
                 else if (c == EOF){
@@ -213,7 +216,7 @@ int get_token(Token *token){
                 }
                 
                 else if (c == '_' || isalpha(c)){
-                    
+                    new_line = false;
                     if(!d_string_add_char(str, (char) c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -296,9 +299,7 @@ int get_token(Token *token){
                     token->type = TOKEN_R_BRACKET;
                     return free_the_stuff(SCANNER_OK, str);
                 }
-                
-                new_line = false;
-
+		new_line = false;
                 break;
 
             case (INDENTATION_COUNTING):
@@ -589,12 +590,13 @@ int get_token(Token *token){
                 break;
 
             case(LINE_COMMENT):
-                if(c == '\n'){
+                /*if(c == '\n'){
                     scanner_state = START_STATE;
                     token->type = TOKEN_EOL;
                     free_the_stuff(SCANNER_OK, str);
                 }
-
+                */
+                scanner_state = START_STATE;
                 break;
 
             case (SECOND_QUOTE_BEG):
