@@ -591,6 +591,8 @@ int get_token(Token *token){
             case(LINE_COMMENT):
                 if(c == '\n'){
                     scanner_state = START_STATE;
+                    token->type = TOKEN_EOL;
+                    free_the_stuff(SCANNER_OK, str);
                 }
 
                 break;
