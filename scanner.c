@@ -57,8 +57,7 @@ void stack_init(Simple_stack* stack){
 }
 
 void stack_pop(Simple_stack* stack) {
-    Simple_stack_item* popped = stack->top;
-    int retval = popped->value;        
+    Simple_stack_item* popped = stack->top;        
     stack->top = popped->next;
 
     free(popped);   
@@ -157,7 +156,7 @@ void set_stack(Simple_stack* stack){
 
 //Main function
 int get_token(Token *token){
-    //printf("## in token ##\n");
+    printf("## in token ##\n");
 
     if(file == NULL || dynamic_str == NULL){
         return INTERNAL_ERROR;        
@@ -183,13 +182,18 @@ int get_token(Token *token){
     while (true){
         
         c = (char) getc(file);
-	    //printf("%c -> char %d\n", c, scanner_state);
+	//printf("%c -> char %d\n", c, scanner_state);
         switch(scanner_state){
             
             case(START_STATE):
-
-
-                if (c == '\n'){
+		if(!isspace(c) && new_line && indentation_stack->top->value > 0){
+			ungetc(c, file);
+			scanner_state = DEDENT_STATE;	
+			new_line = true;
+				break;
+		
+		}
+                else if (c == '\n'){
                     token->type = TOKEN_EOL;
                     indentation_count = 0;
                     new_line = true;
@@ -202,7 +206,6 @@ int get_token(Token *token){
                     new_line = false;
                     in_indentation = true;
                     scanner_state = INDENTATION_COUNTING;
-			 
                     if(indentation_stack->top->value < ++indentation_count){
                         stack_push(indentation_stack, indentation_count);
                         token->type = TOKEN_INDENT;
@@ -590,13 +593,14 @@ int get_token(Token *token){
                 break;
 
             case(LINE_COMMENT):
-                /*if(c == '\n'){
+                if(c == '\n'){
                     scanner_state = START_STATE;
                     token->type = TOKEN_EOL;
-                    free_the_stuff(SCANNER_OK, str);
+		    indentation_count = 0;
+                    new_line = true;
+                    return free_the_stuff(SCANNER_OK, str);
                 }
-                */
-                scanner_state = START_STATE;
+
                 break;
 
             case (SECOND_QUOTE_BEG):

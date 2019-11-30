@@ -76,6 +76,12 @@ int process_int(Dynamic_string* d_str, Token* token);
 
 int process_float(Dynamic_string* d_str, Token* token);
 
+void set_stack(Simple_stack* stack);
+
+void set_file(FILE* file);
+
+void set_d_string(Dynamic_string* str);
+
 int get_token(Token *token);
 
 #endif
