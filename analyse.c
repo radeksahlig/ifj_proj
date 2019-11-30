@@ -22,7 +22,7 @@
 }while(0)
 
 #define GET_TOKEN() do{\
-	if((retval = new_token(&token)))\
+	if((retval = get_token(&token)))\
 		return retval;\
 }while(0)
 
@@ -58,9 +58,6 @@
             return SYNTAX_ERROR;\
 }while(0)
 
-#define SYNTAX_OK 0
-#define SYTNAX_ERROR 0
-
 Token token;
 
 static int prog();
@@ -74,40 +71,6 @@ static int arg();
 static int arg_n();
 int precedent_analys();
 
-
-/*Token_type tokeny[] = {TOKEN_ID, TOKEN_L_BRACKET, TOKEN_STRING, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_ID, TOKEN_ASSIGN, TOKEN_ID, TOKEN_L_BRACKET, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_EOF};*/
-//-----------------------------------------------------------------------------------
-/*
-print('Zadejte cislo pro vypocet faktorialu: ')
-a = inputi()
-if a < 0.0: # pred porovnanim probehne implicitni konverze int na float
-print('Faktorial nelze spocitat')
-else:
-vysl = factorial(a)
-print('Vysledek je:', vysl)
-*/
-/*
-Token_type tokeny[] = {TOKEN_ID, TOKEN_L_BRACKET, TOKEN_STRING, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_ID, TOKEN_ASSIGN, TOKEN_ID, TOKEN_L_BRACKET, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_KEYWORD, TOKEN_ID, TOKEN_COLON, TOKEN_EOL, TOKEN_INDENT, TOKEN_INDENT, TOKEN_ID, TOKEN_L_BRACKET, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_DEDENT, TOKEN_DEDENT, TOKEN_KEYWORD, TOKEN_COLON, TOKEN_EOL, TOKEN_INDENT, TOKEN_ID, TOKEN_ASSIGN, TOKEN_ID, TOKEN_L_BRACKET, TOKEN_ID, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_ID, TOKEN_L_BRACKET, TOKEN_STRING, TOKEN_COMMA, TOKEN_ID, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_DEDENT, TOKEN_EOF, TOKEN_EOF, TOKEN_EOF};
-
-Keyword keywordy[] = {KEYWORD_IF, KEYWORD_ELSE};
-
-
-//----------------------------------------------------------------------------------
-int i = 0;
-int j = 0;
-int get_token(Token *token){
-	if(i < 50){
-		if(tokeny[i] == TOKEN_KEYWORD){
-			token->type = TOKEN_KEYWORD;
-			token->attribute.keyword = keywordy[j];
-			j++;		
-		}else{
-			token->type = tokeny[i];
-		}
-	}
-	i++;
-	return 0;
-}*/
 int new_token(Token *token){
 	int retval= get_token(token);
 	switch(token->type){
@@ -425,23 +388,8 @@ int main(){
 	if((file = fopen("./code/test1", "r")))
 		printf("Soubor otevřen");
 	set_file(file);
-	if((retval = new_token(&token)))
-		return retval;
+	GET_TOKEN();
 	int cont = prog();
 	printf("%d\n", cont);	
 	return cont;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
