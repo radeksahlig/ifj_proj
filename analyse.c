@@ -320,7 +320,5 @@ int main(){
 	file = stdin;
 	set_file(file);
 	GET_TOKEN();
-	int cont = prog();
-	printf("%d\n", cont);	
-	return cont;
+	return prog();
 }
