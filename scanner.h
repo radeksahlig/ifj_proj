@@ -44,6 +44,9 @@ typedef enum{
     TOKEN_NEQ, // !=
     TOKEN_INDENT,
     TOKEN_DEDENT,
+    TOKEN_PREC_OPEN,
+    TOKEN_PREC_CLOSE,
+    TOKEN_PREC_ID
 }Token_type;
 
 typedef union{

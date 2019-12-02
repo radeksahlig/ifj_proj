@@ -9,14 +9,12 @@ void symstackInit(symStack* stack){
   stack->top = NULL;
 }
 
-bool symstackPush(symStack* stack, Token_type token, tNodeType type){
+bool symstackPush(symStack* stack, Token_type token){
   symStackItem* nitem = (symStackItem*)malloc(sizeof(symStackItem));
 
   if(nitem != NULL){
     nitem->tokenType = token;
-    nitem->nodeType = type;
     nitem->next = stack->top;
-
     stack->top = nitem;
     return true;
   }else{
@@ -43,8 +41,8 @@ void symstackPopMore(symStack* stack, int howmany){
   }
 }
 
-symStackItem* symstackTop(symStack* stack){
-  return stack->top;
+Token_type symstackTop(symStack* stack){
+  return stack->top->tokenType;
 }
 
 void symstackFree(symStack* stack){
