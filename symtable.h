@@ -1,3 +1,6 @@
+#ifndef _SYMTABLE_H
+#define _SYMTABLE_H
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<stdarg.h>
@@ -53,3 +56,5 @@ void symtableInsertV(tSymtable*, char*, tInsideVariable*);
 tBSTNodePtr symtableSearch(tSymtable*, char*);
 void symtableDelete(tSymtable*, char*);
 void symtableDispose(tSymtable*);
+
+#endif
