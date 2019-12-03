@@ -1,6 +1,7 @@
 
 
 #include "symtable.h"
+#include "string.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -14,12 +15,12 @@ void BSTInit (tBSTNodePtr *RootPtr) {
 tBSTNodePtr BSTSearch (tBSTNodePtr RootPtr, char* K)	{
 //Funkce vyhledá uzel v BVS s klíčem K.
 	 if(RootPtr != NULL){
-		 if(RootPtr->Key > K){
-			 return BSTSearch(RootPtr->LPtr, K);
-		 }else if(RootPtr->Key < K){
-			 return BSTSearch(RootPtr->RPtr, K);
-		 }else if(RootPtr->Key == K){
+		 if((strcmp(RootPtr->Key, K))== 0){
 			 return RootPtr;
+		 }else if((strcmp(K, RootPtr->Key)) < 0){
+			 return BSTSearch(RootPtr->RPtr, K);
+		 }else if((strcmp(K, RootPtr->Key)) > 0){
+			 return BSTSearch(RootPtr->LPtr, K);
 		 }else{
 			 return NULL;
 		 }
@@ -30,12 +31,17 @@ tBSTNodePtr BSTSearch (tBSTNodePtr RootPtr, char* K)	{
 }
 
 
-void BSTInsert (tBSTNodePtr* RootPtr, char* K, void* Content, tNodeType ntype)	{
+int BSTInsert (tBSTNodePtr* RootPtr, Dynamic_string* K, void* Content, tNodeType ntype)	{
 //Vloží do stromu RootPtr uzel.
 	 if(*RootPtr == NULL){
 		 tBSTNodePtr x = malloc(sizeof(struct tBSTNode));
-		 x->Key = K;
-		 x->BSTNodeCont = Content;
+		 if(x == NULL)
+			return 99;
+		 x->Key = malloc(K->length);
+		 if(x->Key == NULL)
+			return 99;
+		 strcpy(x->Key, K->string);
+		 x->content = Content;
 		 x->nodeType = ntype;
 		 x->LPtr = NULL;
 		 x->RPtr = NULL;
@@ -46,9 +52,10 @@ void BSTInsert (tBSTNodePtr* RootPtr, char* K, void* Content, tNodeType ntype)	{
 		 }else if((*RootPtr)->Key < K){
 			 BSTInsert(&((*RootPtr)->RPtr), K, Content, ntype);
 		 }else if((*RootPtr)->Key == K){
-			 (*RootPtr)->BSTNodeCont = Content;
+			 (*RootPtr)->content = Content;
 		 }
 	 }
+	return 0;
 }
 
 void ReplaceByRightmost (tBSTNodePtr PtrReplaced, tBSTNodePtr *RootPtr) {
@@ -56,7 +63,7 @@ void ReplaceByRightmost (tBSTNodePtr PtrReplaced, tBSTNodePtr *RootPtr) {
 	 if(*RootPtr != NULL){
 		 if((*RootPtr)->RPtr == NULL){
 			 PtrReplaced->Key = (*RootPtr)->Key;
-			 PtrReplaced->BSTNodeCont = (*RootPtr)->BSTNodeCont;
+			 PtrReplaced->content = (*RootPtr)->content;
 			 tBSTNodePtr x = *RootPtr;
 			 *RootPtr = (*RootPtr)->LPtr;
 			 free(x);
@@ -104,12 +111,20 @@ void symtableInit(tSymtable* tab){
 	BSTInit(&(tab->root));
 }
 
-void symtableInsertF(tSymtable* tab, char* key, tInsideFunction * data){
-	BSTInsert(&(tab->root), key, data, nFunction);
+int symtableInsertF(tSymtable* tab, Dynamic_string* key){
+	tInsideFunction *data = malloc(sizeof(tInsideFunction));
+	data->returning = 0;
+	data->declared = false;
+	data->defined = false;
+	data->local = NULL;
+	data->parameters = 0;
+	return BSTInsert(&(tab->root), key, data, nFunction);
 }
 
-void symtableInsertV(tSymtable* tab, char* key, tInsideVariable * data){
-	BSTInsert(&(tab->root), key, data, nVariable);
+int symtableInsertV(tSymtable* tab, Dynamic_string* key){
+	tInsideVariable *data = malloc(sizeof(tInsideVariable));
+	data->dataType = 0;
+	return BSTInsert(&(tab->root), key, data, nVariable);
 }
 
 tBSTNodePtr symtableSearch(tSymtable* tab, char* key){
