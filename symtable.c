@@ -77,9 +77,9 @@ void ReplaceByRightmost (tBSTNodePtr PtrReplaced, tBSTNodePtr *RootPtr) {
 void BSTDelete (tBSTNodePtr *RootPtr, char* K) 		{
 //Zruší uzel stromu, který obsahuje klíč K.
 	 if(*RootPtr != NULL){
-		 if((*RootPtr)->Key > K){
+		 if((strcmp(K, (*RootPtr)->Key)) > 0){
 			 BSTDelete(&(*RootPtr)->LPtr, K);
-		 }else if((*RootPtr)->Key < K){
+		 }else if((strcmp(K, (*RootPtr)->Key)) < 0){
 			 BSTDelete(&(*RootPtr)->RPtr, K);
 		 }else{
 			 tBSTNodePtr x = *RootPtr;
