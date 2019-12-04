@@ -15,6 +15,7 @@ void BSTInit (tBSTNodePtr *RootPtr) {
 tBSTNodePtr BSTSearch (tBSTNodePtr RootPtr, char* K)	{
 //Funkce vyhledá uzel v BVS s klíčem K.
 	 if(RootPtr != NULL){
+		//printf("Hledám ve stromě --- Hledám : %s ... Root : %s\n", K, RootPtr->Key);
 		 if((strcmp(RootPtr->Key, K))== 0){
 			 return RootPtr;
 		 }else if((strcmp(K, RootPtr->Key)) < 0){
@@ -47,12 +48,12 @@ int BSTInsert (tBSTNodePtr* RootPtr, Dynamic_string* K, void* Content, tNodeType
 		 x->RPtr = NULL;
 		 *RootPtr = x;
 	 }else{
-		 if((*RootPtr)->Key > K){
-			 BSTInsert(&((*RootPtr)->LPtr), K, Content, ntype);
-		 }else if((*RootPtr)->Key < K){
-			 BSTInsert(&((*RootPtr)->RPtr), K, Content, ntype);
-		 }else if((*RootPtr)->Key == K){
+		 if((strcmp((*RootPtr)->Key, K->string))== 0){
 			 (*RootPtr)->content = Content;
+		 }else if((strcmp(K->string, (*RootPtr)->Key)) > 0){
+			 BSTInsert(&((*RootPtr)->LPtr), K, Content, ntype);
+		 }else if((strcmp(K->string, (*RootPtr)->Key)) < 0){
+			 BSTInsert(&((*RootPtr)->RPtr), K, Content, ntype);
 		 }
 	 }
 	return 0;

@@ -70,7 +70,8 @@
 Token token;
 tSymtable* global;
 tSymtable* local;
-tSymtable* filipka;
+int not_defined = 0;
+bool in_function = false;
 
 
 /*Token_type tokeny[] = {TOKEN_ID, TOKEN_L_BRACKET, TOKEN_STRING, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_ID, TOKEN_ASSIGN, TOKEN_ID, TOKEN_L_BRACKET, TOKEN_R_BRACKET, TOKEN_EOL, TOKEN_EOF};*/
@@ -152,105 +153,140 @@ int prog(){
     	int cur_indent = 0;
     	int prev_indent = 0;
 	if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_DEF){
-        //1. <prog> -> def id (<params>) : EOL <stmt> EOL <prog>
-	printf("---in def\n");
-        GET_TOKEN_CHECK_TYPE(TOKEN_ID);
-	printf("%s -- funkce \n",token.attribute.string->string);
-	if(symtableSearch(global, token.attribute.string->string) != NULL)
-		return SEM_ERROR_DEF;
+		//1. <prog> -> def id (<params>) : EOL <stmt> EOL <prog>
+		printf("---in def\n");
 
-	printf("Vkládám funkci do global -> %s\n", token.attribute.string->string);
-	if((retval = symtableInsertF(global, token.attribute.string)))
-		return retval;
-	tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
-	if(funkce == NULL)
-		return INTERNAL_ERROR;
+		GET_TOKEN_CHECK_TYPE(TOKEN_ID);
 
-	tInsideFunction* fce_content = funkce->content;
+		in_function = true;
+		bool was_declared = false;
+		int param = 0;
+		printf("%s -- funkce \n",token.attribute.string->string);
+
+		tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
+		tInsideFunction* fce_content;
+
+		if(funkce != NULL){//Funkce je declarovaná
+			if(funkce->nodeType == nVariable)
+				return SEM_ERROR_DEF;
+			else{
+				fce_content = funkce->content;
+				if(fce_content->defined == true)//Funkce je definovaná
+					return SEM_ERROR_DEF;
+
+				fce_content->defined = true;
+				not_defined -= 1;
+				was_declared = true;					
+						
+				param = fce_content->parameters;			
+				fce_content->parameters = 0;
+
+				local = malloc(sizeof(tSymtable));
+				symtableInit(local);
+
+				fce_content->local = local;
+			}
+		}else{//Funkce se vloží do symtable
+			printf("Vkládám funkci do global -> %s\n", token.attribute.string->string);
+			if((retval = symtableInsertF(global, token.attribute.string)))
+				return retval;
+			tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
+			if(funkce == NULL)
+				return INTERNAL_ERROR;
+
+			fce_content = funkce->content;	
+
+			fce_content->declared = true;
+			fce_content->defined = true;
+
+			local = malloc(sizeof(tSymtable));
+			symtableInit(local);
+
+			fce_content->local = local;
+		}
 	
-	printf("%d parametrů", fce_content->parameters);
 
-	fce_content->declared = true;
-	fce_content->defined = true;
+		GET_TOKEN_CHECK_TYPE(TOKEN_L_BRACKET);
+	
+		GET_TOKEN();
 
-	local = malloc(sizeof(tSymtable));
-	symtableInit(local);
+		if((retval = params(fce_content)))
+			return retval;
 
-	fce_content->local = local;
+		if(token.type != TOKEN_R_BRACKET)
+			return SYNTAX_ERROR;
 
-        GET_TOKEN_CHECK_TYPE(TOKEN_L_BRACKET);
+		printf("Funkce %s má %d(%d) parametrů\n", token.attribute.string->string, fce_content->parameters, param);
 
-	GET_TOKEN();
+		if((param != fce_content->parameters) && was_declared)
+			return SEM_ERROR_PARAM;
 
-        if((retval = params(fce_content)))
-		return retval;
-        if(token.type != TOKEN_R_BRACKET)
-		return SYNTAX_ERROR;
-	printf("Funkce %s má %d parametrů", token.attribute.string->string, fce_content->parameters);
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
 
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		CHECK_NUM_INDENT(cur_indent, prev_indent);
 
-        CHECK_NUM_INDENT(cur_indent, prev_indent);
+		CHECK_STMT(prev_indent, cur_indent);
+		cur_indent = 0;
 
-        CHECK_STMT(prev_indent, cur_indent);
-        cur_indent = 0;
-
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-
-        return prog();
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		in_function = false;
+		return prog();
 
 	}else if(token.type == TOKEN_EOL){
-	printf("---in eol prog\n");
-        //2. <prog> -> EOL <prog>
-	GET_TOKEN();
-        return prog();
+		printf("---in eol prog\n");
+		//2. <prog> -> EOL <prog>
+		GET_TOKEN();
+		return prog();
 	}else if(token.type == TOKEN_EOF){
-	printf("---in eof\n");
-        //3. <prog> -> EOF
-        return SYNTAX_OK;
+		printf("---in eof -- nedefinovaných fcí je : %d\n", not_defined);
+		//3. <prog> -> EOF
+		//Projít nezavolaný fce
+		if(not_defined == 0)
+			return SYNTAX_OK;
+		return SEM_ERROR_DEF;
 	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_IF){
-	printf("---in if prog\n");        
-	//4. <prog> -> if <expr> : EOL <stmt> else : EOL <stmt> <prog>
-        GET_TOKEN_CHECK_PRECEDENCE();
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        CHECK_NUM_INDENT(cur_indent, prev_indent);
-        CHECK_STMT(prev_indent, cur_indent);
-	cur_indent = 0;
-	printf("---in else prog\n");
-	if(token.type != TOKEN_KEYWORD || token.attribute.keyword != KEYWORD_ELSE)
-		return SYNTAX_ERROR;  
-        //GET_TOKEN_CHECK_KEYWORD(KEYWORD_ELSE);
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        CHECK_NUM_INDENT(cur_indent, prev_indent);
-        CHECK_STMT(prev_indent, cur_indent);
-	cur_indent = 0;
-        return prog();
+		printf("---in if prog\n");        
+		//4. <prog> -> if <expr> : EOL <stmt> else : EOL <stmt> <prog>
+		GET_TOKEN_CHECK_PRECEDENCE();
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		CHECK_NUM_INDENT(cur_indent, prev_indent);
+		CHECK_STMT(prev_indent, cur_indent);
+		cur_indent = 0;
+		printf("---in else prog\n");
+		if(token.type != TOKEN_KEYWORD || token.attribute.keyword != KEYWORD_ELSE)
+			return SYNTAX_ERROR;  
+		//GET_TOKEN_CHECK_KEYWORD(KEYWORD_ELSE);
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		CHECK_NUM_INDENT(cur_indent, prev_indent);
+		CHECK_STMT(prev_indent, cur_indent);
+		cur_indent = 0;
+		return prog();
 	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_WHILE){
-	printf("---in while prog\n");
-        //5. <prog> -> while <expr> : EOL <stmt> EOL <prog>
-        GET_TOKEN_CHECK_PRECEDENCE();
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        CHECK_NUM_INDENT(cur_indent, prev_indent);
-        CHECK_STMT(prev_indent, cur_indent);
-	cur_indent = 0;
-        return prog();
+		printf("---in while prog\n");
+		//5. <prog> -> while <expr> : EOL <stmt> EOL <prog>
+		GET_TOKEN_CHECK_PRECEDENCE();
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		CHECK_NUM_INDENT(cur_indent, prev_indent);
+		CHECK_STMT(prev_indent, cur_indent);
+		cur_indent = 0;
+		return prog();
 	}else if(token.type == TOKEN_ID){
-	printf("---in id prog\n");
-        //6. <prog> -> id<def> EOL <prog>
-        GET_TOKEN_CHECK_RULE(def);
-	printf("prošlo id ---\n");
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        return prog();
+		printf("---in id prog\n");
+		//6. <prog> -> id<def> EOL <prog>
+		if((retval = def()))
+			return retval;
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		return prog();
 	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_PASS){
-	printf("---in pass prog\n");        
-	//7. <prog> -> pass EOL <prog>
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        return prog();
-	}
+		printf("---in pass prog\n");        
+		//7. <prog> -> pass EOL <prog>
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		return prog();
+		}
 	if(token.type == TOKEN_DEDENT){
 	    return prog();
 	}
@@ -262,65 +298,66 @@ static int stmt(int prev_indent, int cur_indent){
 	int this_indent = cur_indent;
 	printf("---in stmt indent : %d - %d token\n", prev_indent, cur_indent);
 	if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_IF){
-        //8. <stmt> ->  if <expr> : EOL <stmt> else : EOL <stmt> EOL <stmt>
-	printf("---in if stmt\n"); 
-        GET_TOKEN_CHECK_PRECEDENCE();
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        CHECK_NUM_INDENT(cur_indent, this_indent);
-        CHECK_STMT(this_indent, cur_indent);
-	cur_indent = this_indent;
-	printf("---in else stmt\n");
+		//8. <stmt> ->  if <expr> : EOL <stmt> else : EOL <stmt> EOL <stmt>
+		printf("---in if stmt\n"); 
+		GET_TOKEN_CHECK_PRECEDENCE();
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		CHECK_NUM_INDENT(cur_indent, this_indent);
+		CHECK_STMT(this_indent, cur_indent);
+		cur_indent = this_indent;
+		printf("---in else stmt\n");
 	if(token.type != TOKEN_KEYWORD || token.attribute.keyword != KEYWORD_ELSE)
 		return SYNTAX_ERROR;  
-        //GET_TOKEN_CHECK_KEYWORD(KEYWORD_ELSE);
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        CHECK_NUM_INDENT(cur_indent, this_indent);
-        CHECK_STMT(this_indent, cur_indent);
-	cur_indent = this_indent;
-        return stmt(prev_indent, cur_indent);
-	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_WHILE){
-	printf("---in while stmt\n"); 
-        //9. <stmt> ->  while <expr> : EOL <stmt> EOL <stmt>
-        GET_TOKEN_CHECK_PRECEDENCE();
-        GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        CHECK_NUM_INDENT(cur_indent, this_indent);
-        CHECK_STMT(this_indent, cur_indent);
-	cur_indent = this_indent;
-        return stmt(prev_indent, cur_indent);
-	}else if(token.type == TOKEN_ID){
-	printf("---in id stmt\n"); 
-        //11. <stmt> -> id <def> EOL <stmt> 
-        GET_TOKEN_CHECK_RULE(def);
-        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-        GET_TOKEN();
-        return stmt(prev_indent, cur_indent);
-	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_PASS){
-	printf("---in pass stmt\n");         
-	//13. <stmt> -> pass EOL <stmt>
-       GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-       GET_TOKEN();
-       return stmt(prev_indent, cur_indent);
-	}else if(token.type == TOKEN_EOL){
-	printf("---in eol stmt\n"); 
-        //10. <stmt> -> EOL <stmt>
-        GET_TOKEN();
-        return stmt(prev_indent, cur_indent);
-	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_RETURN){
-	printf("---in return stmt\n"); 
-        //12. <stmt> -> return <expr> EOL <stmt>
-	GET_TOKEN();
-	if(token.type == TOKEN_EOL){
-		//return None;
-	}else{
-		if((retval = precedent_analys(&token)))
-        		return retval;
+		//GET_TOKEN_CHECK_KEYWORD(KEYWORD_ELSE);
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
 		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
-		// return vyraz
-	}
-        CHECK_NUM_DEDENT(cur_indent, prev_indent);
+		CHECK_NUM_INDENT(cur_indent, this_indent);
+		CHECK_STMT(this_indent, cur_indent);
+		cur_indent = this_indent;
+		return stmt(prev_indent, cur_indent);
+	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_WHILE){
+		printf("---in while stmt\n"); 
+		//9. <stmt> ->  while <expr> : EOL <stmt> EOL <stmt>
+		GET_TOKEN_CHECK_PRECEDENCE();
+		GET_TOKEN_CHECK_TYPE(TOKEN_COLON);
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		CHECK_NUM_INDENT(cur_indent, this_indent);
+		CHECK_STMT(this_indent, cur_indent);
+		cur_indent = this_indent;
+		return stmt(prev_indent, cur_indent);
+	}else if(token.type == TOKEN_ID){
+		printf("---in id stmt\n"); 
+		//11. <stmt> -> id <def> EOL <stmt> 
+		if((retval = def()))
+			return retval;
+		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+		GET_TOKEN();
+        	return stmt(prev_indent, cur_indent);
+	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_PASS){
+		printf("---in pass stmt\n");         
+		//13. <stmt> -> pass EOL <stmt>
+	        GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+	        GET_TOKEN();
+	        return stmt(prev_indent, cur_indent);
+	}else if(token.type == TOKEN_EOL){
+		printf("---in eol stmt\n"); 
+		//10. <stmt> -> EOL <stmt>
+		GET_TOKEN();
+		return stmt(prev_indent, cur_indent);
+	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_RETURN){
+		printf("---in return stmt\n"); 
+		//12. <stmt> -> return <expr> EOL <stmt>
+		GET_TOKEN();
+		if(token.type == TOKEN_EOL){
+			//return None;
+		}else{
+			if((retval = precedent_analys(&token)))
+				return retval;
+			GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
+			// return vyraz
+		}
+		CHECK_NUM_DEDENT(cur_indent, prev_indent);
 	}
 	if(token.type == TOKEN_DEDENT){
 	printf("---in dedent stmt %d - %d token\n", prev_indent, cur_indent);
@@ -384,37 +421,153 @@ static int param_n(tInsideFunction* funkce){
 static int def(){
 	int retval;
 	printf("---in def\n");
+
+	Token pid = token;
+
+	GET_TOKEN();
+
 	if(token.type == TOKEN_L_BRACKET){
-        //19. <def> -> (<arg>)
-        GET_TOKEN_CHECK_RULE(arg);
-        if(token.type != TOKEN_R_BRACKET)
-        	return SYNTAX_ERROR;
-        return SYNTAX_OK;
+		//19. <def> -> (<arg>)
+		printf("Nazev fce - %s\n", pid.attribute.string->string);
+			
+		tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
+		tInsideFunction* fce_content;
+
+		if(funkce == NULL){//Funkce není definovaná
+			if((retval = symtableInsertF(global, pid.attribute.string)))
+				return retval;
+			tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
+			if(funkce == NULL)
+				return INTERNAL_ERROR;
+
+			fce_content = funkce->content;
+			fce_content->declared = true;
+			fce_content->defined = false;
+			not_defined += 1;
+		}else if(funkce->nodeType == nFunction){//Funkce je definovaná
+			fce_content = funkce->content;
+		}else{
+			return SEM_ERROR_DEF;		
+		}
+		int param = fce_content->parameters;
+		
+		GET_TOKEN();
+		
+		if((retval= arg(&param, fce_content->defined)))
+			return retval;
+
+		//Kontrola počtu parametrů
+		if(fce_content->defined){
+			if(param != 0)
+				return SEM_ERROR_PARAM;
+		}else{
+			fce_content->parameters = param;
+		}
+		
+		if(token.type != TOKEN_R_BRACKET)
+			return SYNTAX_ERROR;
+
+
+		return SYNTAX_OK;
 	}else if(token.type == TOKEN_ASSIGN){
-        //20. <def> -> = <rovn>
-        GET_TOKEN();
-        return rovn();
-        //nějak ukládat data do proměnné
+		//20. <def> -> = <rovn>
+		tBSTNodePtr idcko = symtableSearch(global, pid.attribute.string->string);
+		if(in_function){//Vloží se do local
+			if(idcko != NULL){
+				if(idcko->nodeType == nFunction)
+					return SEM_ERROR_DEF;
+			}
+
+			idcko = symtableSearch(local, pid.attribute.string->string);
+			if(idcko != NULL){//Už existuje
+			
+			}else{//Neexistuje
+				if((retval = symtableInsertV(local, pid.attribute.string)))
+					return retval;
+				printf("Vkládám proměnnou %s do local\n", pid.attribute.string->string);
+				idcko = symtableSearch(local, pid.attribute.string->string);
+				if(idcko == NULL)
+					return INTERNAL_ERROR;
+			}
+		}else{//Vloží se do global
+			if(idcko != NULL){//Už existuje
+				if(idcko->nodeType == nFunction)
+					return SEM_ERROR_DEF;
+			}else{//Neexistuje
+				if((retval = symtableInsertV(global, pid.attribute.string)))
+					return retval;
+				printf("Vkládám proměnnou %s do global\n", pid.attribute.string->string);
+				idcko = symtableSearch(global, pid.attribute.string->string);
+				if(idcko == NULL)
+					return INTERNAL_ERROR;
+			}
+		}
+
+		GET_TOKEN();
+		
+		if((retval = rovn(&pid)))
+			return retval;
+
+		//Nějak zpracovat typ proměnné
+		
+		return SYNTAX_OK;	
 	}
     return SYNTAX_ERROR;
 }
 
-static int rovn(){
-	int retval;
-	printf("---in rovn\n");
+static int rovn(Token* pid){
+    int retval;
+    printf("---in rovn\n");
+
     if(token.type == TOKEN_ID){
         //23. <rovn> -> id(<arg>)
         //kontrola proměnné
-        GET_TOKEN_CHECK_TYPE(TOKEN_L_BRACKET);
-        GET_TOKEN_CHECK_RULE(arg);
-        if(token.type != TOKEN_R_BRACKET)
-        	return SYNTAX_ERROR;
-        return SYNTAX_OK;
-    }else if(token.type == TOKEN_STRING){
-        //22. <rovn> -> str_value !!!!!!!!!!!!!!!!!!!!!!!§asi tu bejt nemá!!!!!!!!!
-        return SYNTAX_OK;
+	GET_TOKEN();
+	if(token.type == TOKEN_L_BRACKET){
+		printf("Nazev fce - %s\n", pid->attribute.string->string);
+			
+		tBSTNodePtr funkce = symtableSearch(global, pid->attribute.string->string);
+		tInsideFunction* fce_content;
+
+		if(funkce == NULL){//Funkce není definovaná
+			if((retval = symtableInsertF(global, pid->attribute.string)))
+				return retval;
+			printf("Vkládám funkci %s do global\n", pid->attribute.string->string);
+			tBSTNodePtr funkce = symtableSearch(global, pid->attribute.string->string);
+			if(funkce == NULL)
+				return INTERNAL_ERROR;
+
+			fce_content = funkce->content;
+			fce_content->declared = true;
+			fce_content->defined = false;
+			not_defined += 1;
+		}else{//Funkce je definovaná
+			fce_content = funkce->content;
+		}
+		int param = fce_content->parameters;
+	
+		GET_TOKEN();
+	
+		if((retval= arg(&param, fce_content->defined)))
+			return retval;
+
+		//Kontrola počtu parametrů
+		if(fce_content->defined){
+			if(param != 0)
+				return SEM_ERROR_PARAM;
+		}else{
+			fce_content->parameters = param;
+		}
+
+		if(token.type != TOKEN_R_BRACKET)
+			return SYNTAX_ERROR;
+		return SYNTAX_OK;
+    	}else{
+		return precedent_analys(&token);	
+	}
     }
     //21. <rovn> -> <expr>
+    GET_TOKEN();
     return precedent_analys(&token);
 }
 
@@ -425,30 +578,31 @@ static int value(){
         return SYNTAX_OK;
     }else if(token.type == TOKEN_STRING){
         //26. <value> -> str_value
-	printf("value string\n");
         return SYNTAX_OK;
     }else if(token.type == TOKEN_FLOAT){
         //25. <value> -> float_value
         return SYNTAX_OK;
-    }else if(token.type == TOKEN_ID){
-        //27. <value> -> id
-        //kontrola proměnné
-	return SYNTAX_OK;
     }
     return SYNTAX_ERROR;
 }
 
-static int arg(){
+static int arg(int* param, bool sub){
 	printf("---in arg\n");
-        
     //29. <arg> -> <value> <arg_n>
-	if(token.type == TOKEN_ID || token.type == TOKEN_FLOAT || token.type == TOKEN_STRING || token.type == TOKEN_INTEGER){
+	if(token.type == TOKEN_FLOAT || token.type == TOKEN_STRING || token.type == TOKEN_INTEGER){
 		int retval;
-	    	if((retval= value())){
+
+	    	if((retval= value()))
 			return retval;
-		}
+
+		if(sub)
+			(*param) -= 1;
+		else
+			(*param) += 1;
+
 	    	GET_TOKEN();
-	    	return arg_n();
+
+	    	return arg_n(param, sub);
 	}else if(token.type == TOKEN_R_BRACKET){
 		//28. <arg> -> ε
 		return SYNTAX_OK;	
@@ -456,25 +610,28 @@ static int arg(){
 	return SYNTAX_ERROR;
 }
 
-static int arg_n(){
+static int arg_n(int* param, bool sub){
 	int retval;
 	printf("---in arg_n \n");
     if(token.type == TOKEN_COMMA){
         //31. <arg_n> -> , <value> <arg-n>
         GET_TOKEN_CHECK_RULE(value);
+
+	if(sub)
+		(*param) -= 1;
+	else
+		(*param) += 1;
+
         GET_TOKEN();
-        return arg_n();
+
+        return arg_n(param, sub);
+
     }else if(token.type == TOKEN_R_BRACKET){
 	//30 <arg_n> -> ε
     	return SYNTAX_OK;
-	}
+    }
     return SYNTAX_ERROR;
 }
-/*
-int precedent_analys(){
-	printf("---in expr\n");
-	return SYNTAX_OK;
-}*/
 
 int main(){
 	int retval;
@@ -489,8 +646,6 @@ int main(){
 	Dynamic_string str2;
 	d_string_init(&str2);
 	token.attribute.string = &str2;
-	token.attribute.string->string = "ahoj";
-	printf("%s \n", token.attribute.string->string);
 
 	Simple_stack stack;
 	set_stack(&stack);

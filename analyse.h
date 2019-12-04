@@ -18,12 +18,12 @@ static int param_n();
 
 static int def();
 
-static int rovn();
+static int rovn(Token* token);
 
 static int value();
 
-static int arg();
+static int arg(int* params, bool sub);
 
-static int arg_n();
+static int arg_n(int* params, bool sub);
 
 #endif
