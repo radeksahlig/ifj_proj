@@ -67,6 +67,11 @@
             return SYNTAX_ERROR;\
 }while(0)
 
+#define INSERT_VEST_FUNCTION(s, l)do{\
+	if((retval = insertVestFunction(s, l)))\
+		return retval;\
+}while(0)
+
 Token token;
 tSymtable* global;
 tSymtable* local;
@@ -374,13 +379,21 @@ static int params(tInsideFunction* funkce){
 	printf("---in params\n");
 	if(token.type == TOKEN_ID){
         //16. <params> -> id <param_n>;
-        
-	if(symtableSearch(global, token.attribute.string->string) != NULL){
-		tBSTNodePtr idcko = symtableSearch(global, token.attribute.string->string);
+
+        tBSTNodePtr idcko = symtableSearch(global, token.attribute.string->string);
+	if(idcko != NULL){
 		if(idcko->nodeType == nFunction)
 			return SEM_ERROR_DEF;
 	}
+	
 	if(funkce->parameters > 10)
+		return INTERNAL_ERROR;
+
+	if((retval = symtableInsertV(local, token.attribute.string)))
+		return retval;
+	printf("Vkládám proměnnou %s do local %p\n", token.attribute.string->string, (void *)local);
+	idcko = symtableSearch(local, token.attribute.string->string);
+	if(idcko == NULL)
 		return INTERNAL_ERROR;
 
 	funkce->paramName[funkce->parameters] = token.attribute.string->string;
@@ -405,6 +418,13 @@ static int param_n(tInsideFunction* funkce){
 			return SEM_ERROR_DEF;
 
 		if(funkce->parameters > 10)
+			return INTERNAL_ERROR;
+
+		if((retval = symtableInsertV(local, token.attribute.string)))
+			return retval;
+		printf("Vkládám proměnnou %s do local %p\n", token.attribute.string->string, (void *)local);
+		idcko = symtableSearch(local, token.attribute.string->string);
+		if(idcko == NULL)
 			return INTERNAL_ERROR;
 
 		funkce->paramName[funkce->parameters] = token.attribute.string->string;
@@ -449,7 +469,12 @@ static int def(){
 		}else{
 			return SEM_ERROR_DEF;		
 		}
+		int param2 = fce_content->parameters;
 		int param = fce_content->parameters;
+		if((!fce_content->defined)){
+			param = 0;
+		}
+		
 		
 		GET_TOKEN();
 		
@@ -461,7 +486,10 @@ static int def(){
 			if(param != 0)
 				return SEM_ERROR_PARAM;
 		}else{
-			fce_content->parameters = param;
+			if(param2 == param || param2 == 0)
+				fce_content->parameters = param;
+			else
+				return SEM_ERROR_PARAM;
 		}
 		
 		if(token.type != TOKEN_R_BRACKET)
@@ -484,7 +512,7 @@ static int def(){
 			}else{//Neexistuje
 				if((retval = symtableInsertV(local, pid.attribute.string)))
 					return retval;
-				printf("Vkládám proměnnou %s do local\n", pid.attribute.string->string);
+				printf("Vkládám proměnnou %s do local %p\n", pid.attribute.string->string, (void *)local);
 				idcko = symtableSearch(local, pid.attribute.string->string);
 				if(idcko == NULL)
 					return INTERNAL_ERROR;
@@ -532,7 +560,6 @@ static int rovn(Token* pid){
 		if(funkce == NULL){//Funkce není definovaná
 			if((retval = symtableInsertF(global, pid->attribute.string)))
 				return retval;
-			printf("Vkládám funkci %s do global\n", pid->attribute.string->string);
 			tBSTNodePtr funkce = symtableSearch(global, pid->attribute.string->string);
 			if(funkce == NULL)
 				return INTERNAL_ERROR;
@@ -541,13 +568,20 @@ static int rovn(Token* pid){
 			fce_content->declared = true;
 			fce_content->defined = false;
 			not_defined += 1;
-		}else{//Funkce je definovaná
+		}else if(funkce->nodeType == nFunction){//Funkce je definovaná
 			fce_content = funkce->content;
+		}else{
+			return SEM_ERROR_DEF;		
 		}
+		int param2 = fce_content->parameters;
 		int param = fce_content->parameters;
-	
+		if((!fce_content->defined)){
+			param = 0;
+		}
+		
+		
 		GET_TOKEN();
-	
+		
 		if((retval= arg(&param, fce_content->defined)))
 			return retval;
 
@@ -556,11 +590,14 @@ static int rovn(Token* pid){
 			if(param != 0)
 				return SEM_ERROR_PARAM;
 		}else{
-			fce_content->parameters = param;
+			if(param2 == param || param2 == 0)
+				fce_content->parameters = param;
 		}
-
+		
 		if(token.type != TOKEN_R_BRACKET)
 			return SYNTAX_ERROR;
+
+
 		return SYNTAX_OK;
     	}else{
 		return precedent_analys(&token);	
@@ -582,6 +619,20 @@ static int value(){
     }else if(token.type == TOKEN_FLOAT){
         //25. <value> -> float_value
         return SYNTAX_OK;
+    }else if(token.type == TOKEN_ID){
+	if(in_function){
+		tBSTNodePtr funkce = symtableSearch(local, token.attribute.string->string);
+		if(funkce == NULL){
+			tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
+			if(funkce == NULL)
+				return SEM_ERROR_DEF;
+		}
+	}else{
+		tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
+		if(funkce == NULL)
+			return SEM_ERROR_DEF;
+	}
+	return SYNTAX_OK;
     }
     return SYNTAX_ERROR;
 }
@@ -589,7 +640,7 @@ static int value(){
 static int arg(int* param, bool sub){
 	printf("---in arg\n");
     //29. <arg> -> <value> <arg_n>
-	if(token.type == TOKEN_FLOAT || token.type == TOKEN_STRING || token.type == TOKEN_INTEGER){
+	if(token.type == TOKEN_FLOAT || token.type == TOKEN_STRING || token.type == TOKEN_INTEGER || token.type == TOKEN_ID){
 		int retval;
 
 	    	if((retval= value()))
@@ -633,6 +684,39 @@ static int arg_n(int* param, bool sub){
     return SYNTAX_ERROR;
 }
 
+int initVestFunctions(){
+	int retval;
+	INSERT_VEST_FUNCTION("inputs", 6);
+	INSERT_VEST_FUNCTION("inputf", 6);
+	INSERT_VEST_FUNCTION("inputi", 6);
+
+	return 0;
+}
+
+int insertVestFunction(char* s, int leng){
+	int retval;
+
+	Dynamic_string strvest;
+	d_string_init(&strvest);
+	strvest.string = s;
+	strvest.length = leng;
+
+	printf("Vkládám funkci do global -> %s\n", s);
+	if((retval = symtableInsertF(global, &strvest)))
+		return retval;
+	tBSTNodePtr funkce = symtableSearch(global, s);
+	if(funkce == NULL)
+		return INTERNAL_ERROR;
+
+	tInsideFunction* fce_content;
+	fce_content = funkce->content;	
+	fce_content->declared = true;
+	fce_content->defined = true;
+	
+	return 0;
+}
+
+
 int main(){
 	int retval;
 	
@@ -649,6 +733,9 @@ int main(){
 
 	Simple_stack stack;
 	set_stack(&stack);
+
+	if((retval = initVestFunctions()))
+		return retval;
 
 	FILE* file;	
 	if((file = fopen("./code/test2", "r")))
