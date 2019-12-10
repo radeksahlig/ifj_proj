@@ -509,8 +509,8 @@ int get_token(Token *token){
                 if(c <= 31){
                     return free_the_stuff(SCANNER_ERROR, str);
                 }
-                if(c == '"'){
-                    c = '"';
+                if(c == '\"'){
+                    c = '\"';
                     if(!d_string_add_char(str, c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -549,12 +549,14 @@ int get_token(Token *token){
                     scanner_state = HEXA_FIRST_STATE;
                 }
                 else if(isalpha(c) || isdigit(c)){
+                    //printf("unknown escape\n");
                     if(!d_string_add_char(str, '\\')){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
                     if(!d_string_add_char(str, c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
+                    scanner_state = STRING_STATE;
                 }
                 else{
                     return free_the_stuff(SCANNER_ERROR, str);
@@ -565,6 +567,7 @@ int get_token(Token *token){
             case (HEXA_FIRST_STATE):
                 if(isdigit(c) || tolower(c) == 'a' || tolower(c) == 'b' || tolower(c) == 'c' || tolower(c) == 'd' || tolower(c) == 'e' || tolower(c) == 'f'){
                     hexa[0] = (char) c;
+                    printf("%c\n", hexa[0]);
                     scanner_state = HEXA_SECOND_STATE;
                 }
                 else{
@@ -580,7 +583,7 @@ int get_token(Token *token){
                     int conv = strtol(hexa, &endptr, 16);
                     c = (char) conv;
                     
-                    if(!d_string_add_char(str, 'c')){
+                    if(!d_string_add_char(str, c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
                     
@@ -604,7 +607,7 @@ int get_token(Token *token){
                 break;
 
             case (SECOND_QUOTE_BEG):
-                if(c == '"'){
+                if(c == '\"'){
                     scanner_state = THIRD_QUOTE_BEG;
                 }
                 else{
@@ -614,7 +617,7 @@ int get_token(Token *token){
                 break;
 
             case (THIRD_QUOTE_BEG):
-                if(c == '"'){
+                if(c == '\"'){
                     scanner_state = DOC_STRING_STATE;
                 }
                 else{
@@ -624,7 +627,7 @@ int get_token(Token *token){
                 break;
 
             case(DOC_STRING_STATE):
-                if(c == '"'){
+                if(c == '\"'){
                     scanner_state = SECOND_QUOTE_END;
                 }
                 else{
@@ -635,7 +638,7 @@ int get_token(Token *token){
 
 
             case (SECOND_QUOTE_END):
-                if(c == '"'){
+                if(c == '\"'){
                     scanner_state = THIRD_QUOTE_END;
                 }
                 else{
@@ -645,7 +648,7 @@ int get_token(Token *token){
                 break;
 
             case (THIRD_QUOTE_END):
-                if(c == '"'){
+                if(c == '\"'){
                     scanner_state = START_STATE;
                 }
                 else{
