@@ -47,6 +47,9 @@ typedef enum{
     TOKEN_PREC_OPEN,
     TOKEN_PREC_CLOSE,
     TOKEN_PREC_ID
+    TOKEN_PREC_FLOAT
+    TOKEN_PREC_INTEGER
+    TOKEN_PREC_STRING
 }Token_type;
 
 typedef union{
