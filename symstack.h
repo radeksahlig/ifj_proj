@@ -11,6 +11,9 @@
 //polozka stacku
 typedef struct stackItem {
   Token_type tokenType;
+  int inte;
+  double flt;
+  Dynamic_string* string;
   struct stackItem *next;
 } symStackItem;
 
