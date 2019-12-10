@@ -611,7 +611,7 @@ int get_token(Token *token){
                     scanner_state = THIRD_QUOTE_BEG;
                 }
                 else{
-                    free_the_stuff(SCANNER_ERROR,str);
+                    return free_the_stuff(SCANNER_ERROR,str);
                 }
 
                 break;
@@ -621,7 +621,7 @@ int get_token(Token *token){
                     scanner_state = DOC_STRING_STATE;
                 }
                 else{
-                    free_the_stuff(SCANNER_ERROR,str);
+                    return free_the_stuff(SCANNER_ERROR,str);
                 }
 
                 break;
