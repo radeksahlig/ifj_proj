@@ -32,6 +32,9 @@ void BSTDispose(tBSTNodePtr *);
 
 typedef struct variable {
     int dataType;
+    int integer;
+    double flt;
+    Dynamic_string* string;
 } tInsideVariable;
 
 typedef struct symtable {
