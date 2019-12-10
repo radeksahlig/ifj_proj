@@ -50,6 +50,7 @@ typedef enum{
     TOKEN_PREC_FLOAT
     TOKEN_PREC_INTEGER
     TOKEN_PREC_STRING
+    TOKEN_ERROR
 }Token_type;
 
 typedef union{
