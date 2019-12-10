@@ -47,7 +47,8 @@ typedef struct function {
     bool defined;
     tSymtable *local;
     int parameters;
-    char* paramName[10];
+    char* paramName[10][100];
+    char prvniparam[100];
 } tInsideFunction;
 
 

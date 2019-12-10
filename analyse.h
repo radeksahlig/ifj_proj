@@ -18,12 +18,18 @@ static int param_n();
 
 static int def();
 
-static int rovn(Token* token);
+static int rovn(Token* token, char* lastid);
 
 static int value();
 
-static int arg(int* params, bool sub);
+static int arg(int* params, bool sub, int* count);
 
-static int arg_n(int* params, bool sub);
+static int arg_n(int* params, bool sub, int* count);
+
+int initVestFunctions();
+
+int insertVestFunction(char* s, int leng);
+
+void initVariable(tInsideVariable *content);
 
 #endif
