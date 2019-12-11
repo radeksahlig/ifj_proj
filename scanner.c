@@ -156,7 +156,6 @@ void set_stack(Simple_stack* stack){
 
 //Main function
 int get_token(Token *token){
-    printf("## in token ##\n");
 
     if(file == NULL || dynamic_str == NULL){
         return INTERNAL_ERROR;        

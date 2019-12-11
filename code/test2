@@ -1,0 +1,11 @@
+kdf = asd(1,2,3,4)
+asd(1, kdf, 3.25, 'ahoj j#ak se m#as j#a doce#la dobre co ty')
+def asd(bfdh, asf, asg, ash):
+ asdf = bfd(1,2)
+ print('ahoj', 'jak', 'se', 'mas')
+pass
+a = asd(1, 2, 3, 4)
+print('ja', 'dbore', '1', a)
+def bfd(a, c):
+ pass
+pass

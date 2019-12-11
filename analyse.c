@@ -27,9 +27,9 @@
         return retval;\
 }while(0)
 
-#define CHECK_PRECEDENCE(token) do{\
-    if((retval = precedent_analys(&token)))\
-        return retval;\
+#define CHECK_PRECEDENCE(tok) do{\
+	if((retval = precedent_analys(tok)))\
+		return retval;\
 }while(0)
 
 #define GET_TOKEN() do{\
@@ -67,8 +67,8 @@
             return SYNTAX_ERROR;\
 }while(0)
 
-#define INSERT_VEST_FUNCTION(s, l)do{\
-	if((retval = insertVestFunction(s, l)))\
+#define INSERT_VEST_FUNCTION(s, l, p)do{\
+	if((retval = insertVestFunction(s, l, p)))\
 		return retval;\
 }while(0)
 
@@ -166,6 +166,7 @@ int prog(){
 		GET_TOKEN_CHECK_TYPE(TOKEN_ID);
 
 		in_function = true;
+		setInFunction(true);
 		bool was_declared = false;
 		int param = 0;
 		//printf("%s -- funkce \n",token.attribute.string->string);
@@ -193,7 +194,7 @@ int prog(){
 
 				local = malloc(sizeof(tSymtable));
 				symtableInit(local);
-
+				setLocTable(local);
 				fce_content->local = local;
 			}
 		}else{//Funkce se vloží do symtable
@@ -211,7 +212,7 @@ int prog(){
 
 			local = malloc(sizeof(tSymtable));
 			symtableInit(local);
-
+			setLocTable(local);
 			fce_content->local = local;
 		}
 		
@@ -264,6 +265,7 @@ int prog(){
 		free(fce);
 		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
 		in_function = false;
+		setInFunction(false);
 		return prog();
 
 	}else if(token.type == TOKEN_EOL){
@@ -284,7 +286,7 @@ int prog(){
 		printf("#Začátek ifu v progu\n");
 
 		GET_TOKEN();
-		CHECK_PRECEDENCE(token);
+		CHECK_PRECEDENCE(NULL);
 
 		printf("DEFVAR $ifprom%d\n", label);
 		printf("POPS $ifprom%d\n", label);
@@ -323,9 +325,10 @@ int prog(){
 
 		printf("#Začátek while v progu\n");
 		printf("LABEL $while$start%d\n", label);
-
+		printf("tu");
 		GET_TOKEN();
-		CHECK_PRECEDENCE(token);
+		printf("ještě tu");
+		CHECK_PRECEDENCE(NULL);
 		
 		printf("DEFVAR $whileprom%d\n", label);
 		printf("POPS $whileprom%d\n", label);
@@ -375,7 +378,7 @@ static int stmt(int prev_indent, int cur_indent){
 		printf("#začátek ifu v stmt\n");
 
 		GET_TOKEN(); 
-		CHECK_PRECEDENCE(token);
+		CHECK_PRECEDENCE(NULL);
 
 		printf("DEFVAR $ifprom%d\n", label);
 		printf("POPS $ifprom%d\n", label);
@@ -415,7 +418,7 @@ static int stmt(int prev_indent, int cur_indent){
 		printf("LABEL $while$start%d\n", label);
 
 		GET_TOKEN();
-		CHECK_PRECEDENCE(token);
+		CHECK_PRECEDENCE(NULL);
 
 		printf("DEFVAR $whileprom%d\n", label);
 		printf("POPS $whileprom%d\n", label);
@@ -456,7 +459,7 @@ static int stmt(int prev_indent, int cur_indent){
 		//printf("---in return stmt\n"); 
 		//12. <stmt> -> return <expr> EOL <stmt>
 		GET_TOKEN();
-		CHECK_PRECEDENCE(token);
+		CHECK_PRECEDENCE(NULL);
 		if(token.type != TOKEN_EOL)
 			return SYNTAX_ERROR;
 		printf("POPS LF@%%retval\n");
@@ -551,59 +554,65 @@ static int def(){
 	if(token.type == TOKEN_L_BRACKET){
 		//19. <def> -> (<arg>)
 		//printf("Nazev fce - %s\n", pid.attribute.string->string);
-			
-		tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
-		tInsideFunction* fce_content;
-		if(funkce == NULL){//Funkce není definovaná
-			if((retval = symtableInsertF(global, pid.attribute.string)))
+		if(strcmp(pid.attribute.string->string,"print") == 0){
+			int a = 11;
+			GET_TOKEN();
+			if((retval= arg(&a, false, &a)))
 				return retval;
+		}else{	
 			tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
-			if(funkce == NULL)
-				return INTERNAL_ERROR;
+			tInsideFunction* fce_content;
+			if(funkce == NULL){//Funkce není definovaná
+				if((retval = symtableInsertF(global, pid.attribute.string)))
+					return retval;
+				tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
+				if(funkce == NULL)
+					return INTERNAL_ERROR;
 
-			fce_content = funkce->content;
-			fce_content->declared = true;
-			fce_content->defined = false;
-			not_defined += 1;
-		}else if(funkce->nodeType == nFunction){//Funkce je definovaná
-			fce_content = funkce->content;
-		}else{
-			return SEM_ERROR_DEF;		
+				fce_content = funkce->content;
+				fce_content->declared = true;
+				fce_content->defined = false;
+				not_defined += 1;
+			}else if(funkce->nodeType == nFunction){//Funkce je definovaná
+				fce_content = funkce->content;
+			}else{
+				return SEM_ERROR_DEF;		
+			}
+			int param2 = fce_content->parameters;
+			int param = fce_content->parameters;
+			if((!fce_content->defined)){
+				param = 0;
+			}
+	
+	
+			GET_TOKEN();
+			//Výpis
+			printf("#Tvorba framu pro %s\n", pid.attribute.string->string);
+			printf("CREATEFRAME\n");
+
+			char* fce = malloc(pid.attribute.string->length);
+			strcpy(fce, pid.attribute.string->string);
+			int count = 1;
+			if((retval= arg(&param, fce_content->defined, &count)))
+				return retval;
+
+			//Kontrola počtu parametrů
+			if(fce_content->defined){
+				if(param != 0)
+					return SEM_ERROR_PARAM;
+			}else{
+				if(param2 == param || param2 == 0)
+					fce_content->parameters = param;
+				else
+					return SEM_ERROR_PARAM;
+			}
+	
+			if(token.type != TOKEN_R_BRACKET)
+				return SYNTAX_ERROR;
+
+			printf("CALL !%s\n", fce);
+			free(fce);
 		}
-		int param2 = fce_content->parameters;
-		int param = fce_content->parameters;
-		if((!fce_content->defined)){
-			param = 0;
-		}
-		
-		
-		GET_TOKEN();
-		//Výpis
-		printf("#Tvorba framu pro %s\n", pid.attribute.string->string);
-		printf("CREATEFRAME\n");
-
-		char* fce = malloc(pid.attribute.string->length);
-		strcpy(fce, pid.attribute.string->string);
-		int count = 1;
-		if((retval= arg(&param, fce_content->defined, &count)))
-			return retval;
-
-		//Kontrola počtu parametrů
-		if(fce_content->defined){
-			if(param != 0)
-				return SEM_ERROR_PARAM;
-		}else{
-			if(param2 == param || param2 == 0)
-				fce_content->parameters = param;
-			else
-				return SEM_ERROR_PARAM;
-		}
-		
-		if(token.type != TOKEN_R_BRACKET)
-			return SYNTAX_ERROR;
-
-		printf("CALL !%s\n", fce);
-		free(fce);
 		GET_TOKEN();
 		return SYNTAX_OK;
 	}else if(token.type == TOKEN_ASSIGN){
@@ -667,6 +676,12 @@ static int rovn(Token* pid, char* lastid){
     if(token.type == TOKEN_ID){
         //23. <rovn> -> id(<arg>)
 	//Token first = token;
+	Token* help = malloc(sizeof(Token));
+	Dynamic_string str3;
+	d_string_init(&str3);
+	help->attribute.string = &str3;
+	*help = token;
+	d_string_add_string(token.attribute.string, help->attribute.string);
 	GET_TOKEN();
 	if(token.type == TOKEN_L_BRACKET){
 		//printf("Nazev fce - %s\n", pid->attribute.string->string);
@@ -728,12 +743,14 @@ static int rovn(Token* pid, char* lastid){
 		free(fce);
 		GET_TOKEN();
     	}else{
-		CHECK_PRECEDENCE(token);
+		CHECK_PRECEDENCE(help);
+		
 	}
+	free(help);
     }else{
     	//21. <rovn> -> <expr>
     	GET_TOKEN();
-    	CHECK_PRECEDENCE(token);
+    	CHECK_PRECEDENCE(NULL);
     }
 	
 	tBSTNodePtr idcko = NULL;
@@ -820,17 +837,21 @@ static int arg(int* param, bool sub, int* count){
     //29. <arg> -> <value> <arg_n>
 	if(token.type == TOKEN_FLOAT || token.type == TOKEN_STRING || token.type == TOKEN_INTEGER || token.type == TOKEN_ID){
 		int retval;
-		printf("DEFVAR TF@%%%d\n", (*count));
-		printf("MOVE TF@%%%d ", (*count)++);
-	    	if((retval= value()))
-			return retval;
-		if(sub)
-			(*param) -= 1;
-		else
-			(*param) += 1;
-
-	    	GET_TOKEN();
-
+		if((*param) == 11 && (*count) == 11){
+			printf("WRITE ");
+			if((retval= value()))
+				return retval;
+		}else{
+			printf("DEFVAR TF@%%%d\n", (*count));
+			printf("MOVE TF@%%%d ", (*count)++);
+		    	if((retval= value()))
+				return retval;
+			if(sub)
+				(*param) -= 1;
+			else
+				(*param) += 1;	
+		}
+		GET_TOKEN();
 	    	return arg_n(param, sub, count);
 	}else if(token.type == TOKEN_R_BRACKET){
 		//28. <arg> -> ε
@@ -844,15 +865,20 @@ static int arg_n(int* param, bool sub, int* count){
 	//printf("---in arg_n \n");
     if(token.type == TOKEN_COMMA){
         //31. <arg_n> -> , <value> <arg-n>
-	printf("DEFVAR TF@%%%d\n", (*count));
-	printf("MOVE TF@%%%d ", (*count)++);
-        GET_TOKEN_CHECK_RULE(value);
+	if((*param) == 11 && (*count) == 11){
+		printf("WRITE ");
+		GET_TOKEN_CHECK_RULE(value);
+	}else{
+		
+		printf("DEFVAR TF@%%%d\n", (*count));
+		printf("MOVE TF@%%%d ", (*count)++);
+		GET_TOKEN_CHECK_RULE(value);
 
-	if(sub)
-		(*param) -= 1;
-	else
-		(*param) += 1;
-
+		if(sub)
+			(*param) -= 1;
+		else
+			(*param) += 1;
+	}
         GET_TOKEN();
 
         return arg_n(param, sub, count);
@@ -864,20 +890,20 @@ static int arg_n(int* param, bool sub, int* count){
     return SYNTAX_ERROR;
 }
 
-int initVestFunctions(){
+int initVestFunctions(){//Dát jim počty parametrů
 	int retval;
-	INSERT_VEST_FUNCTION("inputs", 6); //0 paramu
-	INSERT_VEST_FUNCTION("inputf", 6); //0 pramu
-	INSERT_VEST_FUNCTION("inputi", 6); //0 pramu
-	INSERT_VEST_FUNCTION("print", 5); //n paramů
-	INSERT_VEST_FUNCTION("len", 3); //1 param
-	INSERT_VEST_FUNCTION("substr", 6); //3 pramy
-	INSERT_VEST_FUNCTION("ord", 3); //2 paramy
-	INSERT_VEST_FUNCTION("chr", 3); //1 param
+	INSERT_VEST_FUNCTION("inputs", 6, 0); //0 paramu
+	INSERT_VEST_FUNCTION("inputf", 6, 0); //0 pramu
+	INSERT_VEST_FUNCTION("inputi", 6, 0); //0 pramu
+	INSERT_VEST_FUNCTION("print", 5, 10); //n paramů
+	INSERT_VEST_FUNCTION("len", 3, 1); //1 param
+	INSERT_VEST_FUNCTION("ord", 3, 2); //2 paramy
+	INSERT_VEST_FUNCTION("chr", 3, 1); //1 param
+	INSERT_VEST_FUNCTION("substr", 6, 3); //3 pramy
 	return 0;
 }
 
-int insertVestFunction(char* s, int leng){
+int insertVestFunction(char* s, int leng, int pocet){
 	int retval;
 
 	Dynamic_string strvest;
@@ -895,7 +921,11 @@ int insertVestFunction(char* s, int leng){
 	fce_content = funkce->content;	
 	fce_content->declared = true;
 	fce_content->defined = true;
-	
+
+	local = malloc(sizeof(tSymtable));
+	symtableInit(local);
+	fce_content->local = local;
+	fce_content->parameters = pocet;
 	return 0;
 }
 
@@ -911,7 +941,7 @@ void initVariable(tInsideVariable *content){
 
 int main(){
 	int retval;
-	
+
 	global = malloc(sizeof(tSymtable));
 	symtableInit(global);
 	
@@ -926,27 +956,37 @@ int main(){
 	Simple_stack stack;
 	set_stack(&stack);
 
+	setGlobalVariables(&token, global);
+
 	if((retval = initVestFunctions()))
 		return retval;
 
 	FILE* file;	
-	if((file = fopen("./code/test2", "r"))){}
+	if((file = fopen("./code/test2", "r"))){
+		printf("Soubor se otevřel");		
+	}
 	set_file(file);
 
 	printf(".IFJcode19\n");
-	//Vložení vestavěných funkcí
+	printf("JUMP $$main\n");
+	//genVestFce();
 	printf("LABEL $$main\n");
 	
 	GET_TOKEN();
 	int cont = prog();
-	//printf("%d\n", cont);
+	printf("%d\n", cont);
 	
 	symtableDispose(global);
-	/*symtableDispose(local);*/
+
 	printf("#Konec souboru\n");
+	printf("CLEARS\n");
+	printf("EXIT int@0\n");
+
 	return cont;
 }
 
+//Dodělat vest funkce a zkontrolovat interpretem
+//Udělat znova LL tabulku a pravidla - něco se měnilo
 
 
 

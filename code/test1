@@ -1,0 +1,17 @@
+
+print('aa', 15, 'ahoj')
+while a :
+ print('asd')
+ if a :
+   while a :
+    print('asd')
+  print('asdas')
+ else :
+  pass
+print('Zadejte cislo pro vypocet faktorialu:')
+ab=inputi()
+if a :# pred porovnanim probehne implicitni konverze int na float
+ print('Faktorial nelze spocitat')
+else:
+ vysl = factorial(a)
+print('Vysledek je:', vysl)

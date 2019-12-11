@@ -28,7 +28,7 @@ static int arg_n(int* params, bool sub, int* count);
 
 int initVestFunctions();
 
-int insertVestFunction(char* s, int leng);
+int insertVestFunction(char* s, int leng, int pocet);
 
 void initVariable(tInsideVariable *content);
 

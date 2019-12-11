@@ -48,7 +48,6 @@ bool d_string_add_string(Dynamic_string* d_str, Dynamic_string* attribute_str){
     }
     strcpy(attribute_str->string, d_str->string);
     attribute_str->length = d_str->length;
-
     return true;
 }
 

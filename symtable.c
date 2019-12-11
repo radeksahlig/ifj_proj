@@ -101,6 +101,13 @@ void BSTDispose (tBSTNodePtr *RootPtr) {
 	 if(*RootPtr != NULL){
 		 BSTDispose(&(*RootPtr)->LPtr);
 		 BSTDispose(&(*RootPtr)->RPtr);
+		 free((*RootPtr)->Key);
+		 if((*RootPtr)->nodeType == nFunction){
+		 	tInsideFunction* data = (*RootPtr)->content;
+			if(data->local != NULL)
+				BSTDispose(&(data->local->root));
+		 }
+		 free((*RootPtr)->content);
 		 free(*RootPtr);
 		 *RootPtr = NULL;
 	 }

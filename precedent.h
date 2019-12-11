@@ -8,19 +8,24 @@
 #include "symtable.h"
 #include "symstack.h"
 #include "error.h"
+#include "string.h"
 
+int precedent_analys(Token* help); //TODO TOKNE TYPE
 
-int precedent_analys(tSymtable* table); //TODO TOKNE TYPE
-
-int idkfunkce(symStack *stack, Token *help, tSymtable* table); //TODO TOKNE TYPE
+int idkfunkce(symStack *stack, Token* token); //TODO TOKNE TYPE
 
 Token_type StackTopTerm (symStack *stack);
 
 int stackPushOpen(symStack *stack); 
 
-Token_type stackPosition(symStack *stack, int j);
+symStackItem* stackPosition(symStack *stack, int j);
 
 int reduction(symStack *stack); //TODO TOKNE TYPE
 
+void setGlobalVariables(Token* tok, tSymtable* glob);
+
+void setLocTable(tSymtable* local);
+
+void setInFunction(bool in);
 
 #endif

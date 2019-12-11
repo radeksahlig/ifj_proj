@@ -43,25 +43,44 @@
     TOKEN_PREC_FLOAT
     TOKEN_PREC_INTEGER
     TOKEN_PREC_STRING
+    TOKEN_ERROR
 if (top == 9 || top == 24 || top == 12 || top == 13 || top == 14)
 
 
 8 6*/
+Token* token;
+tSymtable* global;
+tSymtable* local;
+bool in_function2 = false;
 
-int precedent_analys(tSymtable* table){
-	token *help = NULL;
-	symStack *stack = malloc(sizeof(symStack)); 		// vytvoreni stacku
-	symstackInit(stack); 								// init stacku
-	symstackPush(stack, TOKEN_EOL);							// pushnuti prvni hodnoty EOL
+void setGlobalVariables(Token* tok, tSymtable* glob){
+	token = tok;
+	global = glob;
+}
+void setLocTable(tSymtable* loc){
+	local = loc;
+}
 
-	get_token(help);							// ziskame token
-	int a = idkfunkce(stack, help, table);				// zavolame funkci pro zpracovani tokenu
+void setInFunction(bool in){
+	in_function2 = in;
+}
 
-	while(StackTopTerm(stack) != TOKEN_EOL && help->type != TOKEN_EOL)							// cyklus pobezi dokud nenarazi na znak konce radku
+int precedent_analys(Token* help){
+	symStack *stack = malloc(sizeof(symStack)); 	
+	symstackInit(stack); 	
+	symstackPush(stack, TOKEN_EOL);	
+	int a;							// pushnuti prvni hodnoty EOL
+	
+	if(help != NULL)
+		if((a = idkfunkce(stack, help)))
+			return a;
+	if((a = idkfunkce(stack, token)))
+		return a;	
+	while(StackTopTerm(stack) != TOKEN_EOL && token->type != TOKEN_EOL)							// cyklus pobezi dokud nenarazi na znak konce radku
 	{
 
-		get_token(help);							// ziskame token
-		int a = idkfunkce(stack, help, table);				// zavolame funkci pro zpracovani tokenu
+		get_token(token);							// ziskame token
+		a = idkfunkce(stack, token);				// zavolame funkci pro zpracovani tokenu
 
 		if (a != SYNTAX_OK)
 			return SEM_ERROR_OTHER;
@@ -69,11 +88,11 @@ int precedent_analys(tSymtable* table){
 	return SYNTAX_OK;
 }
 
-int idkfunkce(symStack *stack, Token *help, tSymtable* table){
-
+int idkfunkce(symStack *stack, Token* token){
 		Token_type top = StackTopTerm(stack);						// do top nahrajeme nejvyssi terminal ze stacku
 
-		if (help->type == TOKEN_ID || help->type == TOKEN_INTEGER || help->type == TOKEN_STRING  || help->type == TOKEN_FLOAT)							//TODO je potreba zjitit co vse jsou identifikatory
+
+		if (token->type == TOKEN_ID || token->type == TOKEN_INTEGER || token->type == TOKEN_STRING  || token->type == TOKEN_FLOAT)							//TODO je potreba zjitit co vse jsou identifikatory
 		{
 			if (top == TOKEN_R_BRACKET || top == TOKEN_ID || TOKEN_FLOAT || TOKEN_INTEGER || TOKEN_STRING)				//pokud je na vrcholu ) nebo identifikator, tak se vypise chyba, protoze nejsou kompatibilni
 			{
@@ -81,51 +100,68 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			}
 			else
 			{
-				if (help->type == TOKEN_INTEGER)
+				if (token->type == TOKEN_INTEGER)
 				{
 					stackPushOpen(stack);				// jinak posle zacatek rozvoje
 					symstackPush(stack,TOKEN_INTEGER);				// a znak identifikatoru
+					stack->top->inte = token->attribute.integer;
 				}
-				else if (help->type == TOKEN_STRING)
+				else if (token->type == TOKEN_STRING)
 				{
 					stackPushOpen(stack);				// jinak posle zacatek rozvoje
 					symstackPush(stack,TOKEN_STRING);				// a znak identifikatoru
+					stack->top->string = token->attribute.string;
 				}
-				else if (help->type == TOKEN_FLOAT)
+				else if (token->type == TOKEN_FLOAT)
 				{
 					stackPushOpen(stack);				// jinak posle zacatek rozvoje
 					symstackPush(stack,TOKEN_FLOAT);				// a znak identifikatoru
+					stack->top->flt = token->attribute.flt;
 				}
-				else if (help->type == TOKEN_ID)
+				else if (token->type == TOKEN_ID)
 				{
-					tBSTNodePtr promnena = symtableSearch(table, help.attribute.string->string);
-					if (promnena == NULL)
-					{
-						return SYNTAX_ERROR;
+					tBSTNodePtr promnena;
+					if(in_function2){
+						promnena = symtableSearch(local, token->attribute.string->string);
+						if(promnena == NULL){
+							promnena = symtableSearch(global, token->attribute.string->string);						
+							if(promnena == NULL)
+								return SYNTAX_ERROR;
+						}
+						
+					}else{
+						promnena = symtableSearch(global, token->attribute.string->string);						
+						if(promnena == NULL)
+							return SYNTAX_ERROR;
 					}
+					
+
 					tInsideVariable* var_content;
 					var_content = promnena->content;
 					int typ = var_content->dataType;
 
+
 					if (typ == 0) //pokud neni zatim nic
 					{
-						stackPushOpen(stack);				// jinak posle zacatek rozvoje
-						symstackPush(stack,TOKEN_ID);				// a znak identifikatoru
+						return SYNTAX_ERROR;
 					}
 					else if (typ == 1)	//pokud je integer
 					{
 						stackPushOpen(stack);				// jinak posle zacatek rozvoje
 						symstackPush(stack,TOKEN_INTEGER);				// a znak identifikatoru
+						stack->top->inte = var_content->integer;
 					}
 					else if (typ == 2)	//pokud je float
 					{
 						stackPushOpen(stack);				// jinak posle zacatek rozvoje
 						symstackPush(stack,TOKEN_FLOAT);				// a znak identifikatoru
+						stack->top->flt = var_content->flt;
 					}
 					else if (typ == 3)	// pokud je string
 					{
 						stackPushOpen(stack);				// jinak posle zacatek rozvoje
 						symstackPush(stack,TOKEN_STRING);				// a znak identifikatoru
+						stack->top->string = var_content->string;
 					}
 					else
 					{
@@ -134,7 +170,7 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 				}
 			}
 		}
-		else if (help->type == TOKEN_L_BRACKET)		// jako token dojde (
+		else if (token->type == TOKEN_L_BRACKET)		// jako token dojde (
 		{
 			if (top == TOKEN_R_BRACKET || top == TOKEN_PREC_ID)				//pokud je na vrcholu ) nebo identifikator, tak se vypise chyba, protoze nejsou kompatibilni
 			{
@@ -146,7 +182,7 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 				symstackPush(stack,TOKEN_L_BRACKET);					// a znak identifikatoru
 			}
 		}
-		else if (help->type == TOKEN_R_BRACKET)		// jako token dojde )
+		else if (token->type == TOKEN_R_BRACKET)		// jako token dojde )
 		{
 			if (top == TOKEN_EOL )							//pokud je na vrcholu EOL, tak se vypise chyba, protoze nejsou kompatibilni
 			{
@@ -162,14 +198,14 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
-				int b = idkfunkce(stack, help);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
+				int b = idkfunkce(stack, token);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
 				if (b != SYNTAX_OK)
 				{
 					return SEM_ERROR_OTHER;
 				}
 			}
 		}
-		else if (help->type == TOKEN_EOL)			// jako token dojde EOL TODO ZEPTAT SE NA EOL
+		else if (token->type == TOKEN_EOL)			// jako token dojde EOL TODO ZEPTAT SE NA EOL
 		{
 			if (top == TOKEN_EOL )							//pokud je na vrcholu eol tak jsme uspesne zredukovali celej vyraz
 			{
@@ -183,20 +219,20 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
-				int b = idkfunkce(stack, help);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
+				int b = idkfunkce(stack, token);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
 				if (b != SYNTAX_OK)
 				{
 					return SEM_ERROR_OTHER;
 				}
 			}
 		}
-		else if (help->type == TOKEN_PLUS || help->type == TOKEN_MINUS)					// jako token dojde +-
+		else if (token->type == TOKEN_PLUS || token->type == TOKEN_MINUS)					// jako token dojde +-
 		{
 			if (top == TOKEN_PLUS || top == TOKEN_MINUS || top == TOKEN_MUL || top == TOKEN_FLOAT_DIV || top == TOKEN_INT_DIV || top == TOKEN_PREC_ID || top == TOKEN_R_BRACKET) //pokud je top + - * / // i )
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
-				int b = idkfunkce(stack, help);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
+				int b = idkfunkce(stack, token);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
 				if (b != SYNTAX_OK)
 				{
 					return SEM_ERROR_OTHER;
@@ -205,7 +241,7 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			else
 			{
 				stackPushOpen(stack);				// jinak posle zacatek rozvoje
-				if (help->type == TOKEN_PLUS)
+				if (token->type == TOKEN_PLUS)
 				{
 					symstackPush(stack,TOKEN_PLUS);					// a znak identifikatoru
 				}
@@ -216,13 +252,13 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 								
 			}
 		}
-		else if (help->type == TOKEN_MUL || help->type == TOKEN_FLOAT_DIV || help->type == TOKEN_INT_DIV)					// jako token dojde * / //
+		else if (token->type == TOKEN_MUL || token->type == TOKEN_FLOAT_DIV || token->type == TOKEN_INT_DIV)					// jako token dojde * / //
 		{
 			if (top == TOKEN_R_BRACKET || top == TOKEN_PREC_ID || top == TOKEN_MUL || top == TOKEN_FLOAT_DIV || top == TOKEN_INT_DIV)
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
-				int b = idkfunkce(stack, help);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
+				int b = idkfunkce(stack, token);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
 				if (b != SYNTAX_OK)
 				{
 					return SEM_ERROR_OTHER;
@@ -231,11 +267,11 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			else
 			{
 				stackPushOpen(stack);
-				if (help->type == TOKEN_MUL)
+				if (token->type == TOKEN_MUL)
 				{
 					symstackPush(stack,TOKEN_MUL);
 				}
-				else if (help->type == TOKEN_FLOAT_DIV)
+				else if (token->type == TOKEN_FLOAT_DIV)
 				{
 					symstackPush(stack,TOKEN_FLOAT_DIV);
 				}
@@ -245,7 +281,7 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 				}
 			}
 		}
-		else if (help->type == TOKEN_LESS || help->type == TOKEN_LEQ || help->type == TOKEN_MORE || help->type == TOKEN_MEQ || help->type == TOKEN_EQ || help->type == TOKEN_NEQ || help->type == TOKEN_ASSIGN)					// jako token dojde < <= > >= == !=	=
+		else if (token->type == TOKEN_LESS || token->type == TOKEN_LEQ || token->type == TOKEN_MORE || token->type == TOKEN_MEQ || token->type == TOKEN_EQ || token->type == TOKEN_NEQ || token->type == TOKEN_ASSIGN)					// jako token dojde < <= > >= == !=	=
 		{
 			if (top >= TOKEN_MEQ && top <= TOKEN_NEQ)
 			{
@@ -254,31 +290,31 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			else if (top == TOKEN_L_BRACKET || top == TOKEN_EOL)
 			{
 				stackPushOpen(stack);
-				if (help->type == TOKEN_LESS)
+				if (token->type == TOKEN_LESS)
 				{
 					symstackPush(stack,TOKEN_LESS);
 				}
-				else if (help->type == TOKEN_LEQ)
+				else if (token->type == TOKEN_LEQ)
 				{
 					symstackPush(stack,TOKEN_LEQ);
 				}
-				else if (help->type == TOKEN_MORE)
+				else if (token->type == TOKEN_MORE)
 				{
 					symstackPush(stack,TOKEN_MORE);
 				}
-				else if (help->type == TOKEN_MEQ)
+				else if (token->type == TOKEN_MEQ)
 				{
 					symstackPush(stack,TOKEN_MEQ);
 				}
-				else if (help->type == TOKEN_EQ)
+				else if (token->type == TOKEN_EQ)
 				{
 					symstackPush(stack,TOKEN_EQ);
 				}
-				else if (help->type == TOKEN_NEQ)
+				else if (token->type == TOKEN_NEQ)
 				{
 					symstackPush(stack,TOKEN_NEQ);
 				}
-				else if (help->type == TOKEN_ASSIGN)
+				else if (token->type == TOKEN_ASSIGN)
 				{
 					symstackPush(stack,TOKEN_ASSIGN);
 				}
@@ -287,7 +323,7 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
-				int b = idkfunkce(stack, help);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
+				int b = idkfunkce(stack, token);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
 				if (b != SYNTAX_OK)
 				{
 					return SEM_ERROR_OTHER;
@@ -300,24 +336,24 @@ int idkfunkce(symStack *stack, Token *help, tSymtable* table){
 Token_type StackTopTerm (symStack *stack){
 
 	symStack *temp = stack;
-	
 	Token_type tokenhelp;
 	tokenhelp = symstackTop(temp);
-
+	
+	//Tohle háže segfaulty !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+	//Není tady kontrola jestli je top NULL
 	while(tokenhelp <= TOKEN_NEQ){
-
-	symStackItem* out = temp->top;
-    temp->top = out->next;
-    tokenhelp = symstackTop(temp);
+	    symStackItem* out = temp->top;
+	    temp->top = out->next;
+	    tokenhelp = symstackTop(temp);
 	}
 
 	if (tokenhelp > TOKEN_NEQ)
 	{
-		return tokenhelp
+		return tokenhelp;
 
 	}else{
 
-		return SYNTAX_ERROR;
+		return TOKEN_ERROR;
 	}
 }
 
@@ -360,10 +396,11 @@ int stackPushOpen(symStack *stack){
 			}
 		}
 	}
+	return 0;
 }
 
 
-Token_type stackPosition(symStack *stack, int j){
+symStackItem* stackPosition(symStack *stack, int j){
 
 	symStackItem* temp = stack->top;
 
@@ -372,7 +409,7 @@ Token_type stackPosition(symStack *stack, int j){
 		temp = temp->next;
 	}
 
-	return temp->tokenType;
+	return temp;
 }
 
 int reduction(symStack *stack){
@@ -389,39 +426,46 @@ int reduction(symStack *stack){
 	}
 
 
-	if(topterm == TOKEN_ID || topterm == TOKEN_INTEGER || topterm == TOKEN_FLOAT || topterm == TOKEN_STRING) // hotovo redukce id  todo rozdelit id podle typu v idk funkci
+	if(topterm == TOKEN_INTEGER || topterm == TOKEN_FLOAT || topterm == TOKEN_STRING) // nutno dodelat nevim jak na to potreba roylisit lokalni a globalni promenou
 	{
+
 		if (i == 3)
 		{
 			symstackPop(stack);
 			help=symstackTop(stack);
-			if (help == TOKEN_ID)
+			symStackItem* temp2 = malloc(sizeof(symStackItem));;
+			if (help == TOKEN_INTEGER)
 			{
-				symstackPopMore(stack, 2);
-				symstackPush(stack,TOKEN_PREC_ID);
-			}
-			else if (help == TOKEN_INTEGER)
-			{
+				temp2->inte = stack->top->inte;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_INTEGER);
+				stack->top->inte = temp2->inte;
+				
 			}
 			else if (help == TOKEN_FLOAT)
 			{
+				stack->top->flt = temp2->flt;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_FLOAT);
+				stack->top->flt = temp2->flt;
 			}
-			else if (TOKEN_STRING)
+			else if (help ==TOKEN_STRING)
 			{
+				temp2->string = stack->top->string;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_STRING);
+				stack->top->string = temp2->string;
 			}
 			else
 			{
+				free(temp2);
 				return SYNTAX_ERROR;	
 			}
+			free(temp2);
 		}
 		else
 		{
+
 			return SYNTAX_ERROR;
 		}
 	}
@@ -430,21 +474,31 @@ int reduction(symStack *stack){
 
 		if (i==5)
 		{
-			Token_type prvni = stackPosition(stack, 1);
-			Token_type druhej = stackPosition(stack, 2);
-			Token_type treti = stackPosition(stack, 3);
-			Token_type ctvtej = stackPosition(stack, 4);
-			Token_type patej = stackPosition(stack, 5);
+			symStackItem* prvni = stackPosition(stack, 1);
+			symStackItem* druhej = stackPosition(stack, 2);
+			symStackItem* treti = stackPosition(stack, 3);
+			symStackItem* ctvrtej = stackPosition(stack, 4);
+			symStackItem* patej = stackPosition(stack, 5);
+			symStackItem* temp2 = malloc(sizeof(symStackItem));;
 
-			if (prvni == TOKEN_PREC_CLOSE && patej = TOKEN_PREC_OPEN && druhej == TOKEN_R_BRACKET && ctvtej == TOKEN_L_BRACKET)
+			if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && druhej->tokenType == TOKEN_R_BRACKET && ctvrtej->tokenType == TOKEN_L_BRACKET)
 			{
+				temp2->tokenType = treti->tokenType;
+				temp2->inte = treti->inte;
+				temp2->flt = treti->flt;
+				temp2->string = treti->string;
 				symstackPopMore(stack, 5);
-				symstackPush(stack, treti);
+				symstackPush(stack, temp2->tokenType);
+				stack->top->inte = temp2->inte;
+				stack->top->flt = temp2->flt;
+				stack->top->string = temp2->string;
 			}
 			else
 			{
+				free(temp2);
 				return SYNTAX_ERROR;
 			}
+			free(temp2);
 		}
 		else
 		{
@@ -462,33 +516,56 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej = TOKEN_PREC_OPEN && treti == TOKEN_PLUS)
+
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_PLUS)
 				{
-					if (druhej == TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER)
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 420;
+						printf("ADDS\n");
 					}
-					else if ((druhej == TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej == TOKEN_PREC_INTEGER && ctvtej ==TOKEN_PREC_FLOAT))
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT);
+						stack->top->flt = 42.0;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("ADDS\n");
 					}
-					else if (druhej == TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT)
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType ==TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT);
+						stack->top->flt = 42.0;
+						printf("INT2FLOATS\n");
+						printf("ADDS\n");
 					}
-					else if (druhej == TOKEN_PREC_STRING && ctvtej ==TOKEN_PREC_STRING)
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_FLOAT);
+						stack->top->flt = 420.0;
+						printf("ADDS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_STRING && ctvrtej->tokenType ==TOKEN_PREC_STRING) 			//TODO
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_STRING);
+						printf("POPS GF@$AXS\n");
+						printf("POPS GF@$BXS\n");
+						printf("CONCAT GF@$CXS GF@$BXS GF@$AXS\n");
+						printf("PUSHS GF@$CXS\n");
 					}
 					else
 					{
@@ -510,33 +587,45 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej = TOKEN_PREC_OPEN && treti == TOKEN_MINUS)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MINUS)
 				{
-					if (druhej == TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER)
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 420;
+						printf("SUB\n");
 					}
-					else if ((druhej == TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej == TOKEN_PREC_INTEGER && ctvtej ==TOKEN_PREC_FLOAT))
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType ==TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT);
+						stack->top->flt = 42.0;
+						printf("INT2FLOATS\n");
+						printf("SUBS\n");
 					}
-					else if (druhej == TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT)
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT);
+						stack->top->flt = 42.0;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("SUBS\n");
 					}
-					else if (druhej == TOKEN_PREC_STRING && ctvtej ==TOKEN_PREC_STRING)
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_STRING);
+						symstackPush(stack, TOKEN_PREC_FLOAT);
+						stack->top->flt = 42.0;
+						printf("SUBS\n");
 					}
 					else
 					{
@@ -558,287 +647,529 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_FLOAT_DIV && ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER)))
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_FLOAT_DIV)
 				{
-					symstackPopMore(stack, 5);
-					symstackPush(stack, TOKEN_PREC_FLOAT);
-				}
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && druhej->inte == 0 )
+					{
+						return SYNTAX_ERROR;
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && druhej->flt == 0)
+					{
+						return SYNTAX_ERROR;
+					}
 
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_FLOAT); 
+						stack->top->flt = 42.0;
+						printf("POPS GF@$AX\n");
+						printf("INT2FLOAT GF@$AXF GF@$AX\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("DIVS\n");
+
+
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_FLOAT); 
+						stack->top->flt = 42.0;
+						printf("DIVS\n");
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_FLOAT); 
+						stack->top->flt = 42.0;
+						printf("INT2FLOATS\n");
+						printf("DIVS\n");
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_FLOAT); 
+						stack->top->flt = 42.0;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("DIVS\n");
+					}
+					else
+					{
+						return SYNTAX_ERROR;	
+					}
+				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_INT_DIV)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && druhej == TOKEN_PREC_INTEGER && treti == TOKEN_INT_DIV && ctvtej == TOKEN_PREC_INTEGER && patej == TOKEN_PREC_OPEN)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && druhej->tokenType == TOKEN_PREC_INTEGER && treti->tokenType == TOKEN_INT_DIV && ctvrtej->tokenType == TOKEN_PREC_INTEGER && patej->tokenType == TOKEN_PREC_OPEN)
 				{
+					if (druhej->inte != 0)
+					{
 					symstackPopMore(stack, 5);
 					symstackPush(stack, TOKEN_PREC_INTEGER);
+					stack->top->inte = 420;
+					printf("IDIVS\n");
+					}
+					else
+					{
+						return SYNTAX_ERROR;
+					}
+					
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_MUL)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_MUL)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MUL)
 				{
-					if (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER )
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 420;
+						printf("MULS\n");
+
 					}
-					else if (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT)
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_FLOAT);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->flt = 42.0;
+						printf("MULS\n");
 					}
-					else if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER))
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_FLOAT);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->flt = 42.0;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("MULS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->flt = 42.0;
+						printf("INT2FLOATS\n");
+						printf("MULS\n");
+					}
+					else
+					{
+						return SYNTAX_ERROR;
 					}
 
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_MEQ)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_MEQ)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MEQ)
 				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
 					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						
+					}
+					else if (druhej->tokenType== TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("LTS\n");
+					}
+					else 
+					{
+						return SYNTAX_ERROR;
+					}
+
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_MORE)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_MORE)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MORE)
 				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("INT2FLOATS\n");
+						printf("GTS\n");
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("GTS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("GTS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("GTS\n");
+					}
+					else 
+					{
+						return SYNTAX_ERROR;
 					}
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_LEQ)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_LEQ)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_LEQ)
 				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+					}
+					else 
+					{
+						return SYNTAX_ERROR;
 					}
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_LESS)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_LESS)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_LESS)
 				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("INT2FLOATS\n");
+						printf("LTS\n");	
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("LTS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("LTS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("LTS\n");
+					}
+					else 
+					{
+						return SYNTAX_ERROR;
 					}
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_EQ)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_EQ)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_EQ)
 				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("INT2FLOATS\n");
+						printf("EQS\n");
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("EQS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("EQS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("EQS\n");
+					}
+					else 
+					{
+						return SYNTAX_ERROR;
 					}
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else if (topterm == TOKEN_ASSIGN)
 		{
-			if (i == 5)
-			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
-
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_ASSIGN)
-				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
-					{
-						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_INTEGER);
-					}
-				}
-				else
-				{
-					SYNTAX_ERROR;
-				}
-			}
-			else
-			{
-				SYNTAX_ERROR;
-			}
+				return SYNTAX_ERROR;			
 		}
 		else if (topterm == TOKEN_NEQ)
 		{
 			if (i == 5)
 			{
-				Token_type prvni = stackPosition(stack, 1);
-				Token_type druhej = stackPosition(stack, 2);
-				Token_type treti = stackPosition(stack, 3);
-				Token_type ctvtej = stackPosition(stack, 4);
-				Token_type patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 1);
+				symStackItem* druhej = stackPosition(stack, 2);
+				symStackItem* treti = stackPosition(stack, 3);
+				symStackItem* ctvrtej = stackPosition(stack, 4);
+				symStackItem* patej = stackPosition(stack, 5);
 
-				if (prvni == TOKEN_PREC_CLOSE && patej == TOKEN_PREC_OPEN && treti == TOKEN_NEQ)
+				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_NEQ)
 				{
-					if ((druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_INTEGER) || (druhej== TOKEN_PREC_FLOAT && ctvtej == TOKEN_PREC_FLOAT) || (druhej== TOKEN_PREC_INTEGER && ctvtej == TOKEN_PREC_INTEGER ))
+					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("INT2FLOATS\n");
+						printf("EQS\n");
+						printf("NOTS\n");
+
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("POPS GF@$AXF\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@$AXF\n");
+						printf("EQS\n");
+						printf("NOTS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("EQS\n");
+						printf("NOTS\n");
+					}
+					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
+					{
+						symstackPopMore(stack, 5);
+						symstackPush(stack, TOKEN_PREC_INTEGER);
+						stack->top->inte = 1;
+						printf("EQS\n");
+						printf("NOTS\n");
+					}
+					else 
+					{
+						return SYNTAX_ERROR;
 					}
 				}
 				else
 				{
-					SYNTAX_ERROR;
+					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
-				SYNTAX_ERROR;
+				return SYNTAX_ERROR;
 			}
 		}
 		else
 		{
-			SYNTAX_ERROR;
+			return SYNTAX_ERROR;
 		}
 	}
 	else
