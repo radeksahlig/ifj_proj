@@ -48,8 +48,6 @@ Dynamic_string* dynamic_str;
 bool in_indentation = false;
 Simple_stack* indentation_stack;
 bool new_line = true;
-bool dedent = false;
-
 
 //stack functions
 void stack_init(Simple_stack* stack){
