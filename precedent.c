@@ -335,27 +335,41 @@ int idkfunkce(symStack *stack, Token* token){
 
 Token_type StackTopTerm (symStack *stack){
 
-	symStack *temp = stack;
+	symStack *temp = = malloc(sizeof(symStack)); 
+	temp->top = stack->top;
 	Token_type tokenhelp;
-	tokenhelp = symstackTop(temp);
 	
-	//Tohle háže segfaulty !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-	//Není tady kontrola jestli je top NULL
-	while(tokenhelp <= TOKEN_NEQ){
-	    symStackItem* out = temp->top;
-	    temp->top = out->next;
-	    tokenhelp = symstackTop(temp);
-	}
-
-	if (tokenhelp > TOKEN_NEQ)
+	if (temp->top == NULL)
 	{
-		return tokenhelp;
-
-	}else{
-
 		return TOKEN_ERROR;
 	}
-}
+	else
+	{
+		tokenhelp = symstackTop(temp);
+
+		while(tokenhelp > TOKEN_NEQ)
+		{
+	    	symStackItem* out = temp->top;
+	    	if (out->next != NULL)
+	    	{
+	    	  	temp->top = out->next;
+	    		tokenhelp = symstackTop(temp);
+	    	}
+	    	else
+	    	{
+	    		return TOKEN_ERROR
+	    	}
+		}
+
+		if (tokenhelp > TOKEN_NEQ)
+		{
+			return tokenhelp;
+		}
+		else
+		{
+			return TOKEN_ERROR;
+		}
+	}
 
 int stackPushOpen(symStack *stack){
 	if(StackTopTerm(stack) == symstackTop(stack))
