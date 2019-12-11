@@ -9,9 +9,9 @@ while a :
  else :
   pass
 print('Zadejte cislo pro vypocet faktorialu:')
-ab=inputi()
+ab = inputi()
 if a :# pred porovnanim probehne implicitni konverze int na float
  print('Faktorial nelze spocitat')
-else:
- vysl = factorial(a)
-print('Vysledek je:', vysl)
+else :
+ print('a')
+print('Vysledek je:')

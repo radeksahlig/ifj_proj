@@ -15,6 +15,7 @@ typedef struct stackItem {
   double flt;
   Dynamic_string* string;
   struct stackItem *next;
+  char* nazev;
 } symStackItem;
 
 //stack

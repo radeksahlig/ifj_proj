@@ -57,12 +57,13 @@ void stack_init(Simple_stack* stack){
 
 void set_stack(Simple_stack* stack){
     indentation_stack = stack;
+    Simple_stack_item* new_item = (Simple_stack_item*)malloc(sizeof(Simple_stack_item));
+    indentation_stack->top = new_item;
     stack_init(indentation_stack);
 }
 
 void stack_pop(Simple_stack* stack) {
-    Simple_stack_item* popped = stack->top;
-    int retval = popped->value;        
+    Simple_stack_item* popped = stack->top;      
     stack->top = popped->next;
 
     free(popped);   

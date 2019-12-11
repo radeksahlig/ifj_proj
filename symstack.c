@@ -17,6 +17,7 @@ bool symstackPush(symStack* stack, Token_type token){
     nitem->inte = 0;
     nitem->flt = 0.0;
     nitem->next = stack->top;
+    nitem->nazev = NULL;
     stack->top = nitem;
     return true;
   }else{

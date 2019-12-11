@@ -1,60 +1,18 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "scanner.h"
 #include "symstack.h"
 #include "symtable.h"
 #include "precedent.h"
-/*
-		TODO funkce na ziskani top terminalu done
-		TODO funkce na doplneni zacatku rozvoje za top terminal // rozvoj(tStack, int) done
-		TODO funkce redukce   // reduction(tStac) done
-		TODO ZEPTAT SE NA EOL done
-		TODO upravit volani funkce idk funkce
-		todo vymyslet jak bude idk funkce vracet typ
-		
 
-
-
-    TOKEN_KEYWORD,				0
-    TOKEN_ID,					1
-    TOKEN_INTEGER,				2
-    TOKEN_FLOAT,				3			
-    TOKEN_STRING,				4
-    TOKEN_EOF,					5
-    TOKEN_EOL, 					6
-    TOKEN_COMMA, // ,				7
-    TOKEN_L_BRACKET, // (			8
-    TOKEN_R_BRACKET, // )			9
-    TOKEN_PLUS, // +				10
-    TOKEN_MINUS, // -				11
-    TOKEN_MUL, // *				12
-    TOKEN_FLOAT_DIV, // /			13
-    TOKEN_INT_DIV, // //			14
-    TOKEN_MEQ, // >=				15
-    TOKEN_MORE, // >				16
-    TOKEN_LEQ, // <=				17
-    TOKEN_LESS, //<				18
-    TOKEN_EQ, // ==				19
-    TOKEN_ASSIGN, // =				20
-    TOKEN_NEQ, // !=				21
-    TOKEN_PREC_OPEN, <				22
-    TOKEN_PREC_CLOSE, >				23
-    TOKEN_PREC_ID				24
-    TOKEN_PREC_FLOAT
-    TOKEN_PREC_INTEGER
-    TOKEN_PREC_STRING
-    TOKEN_ERROR
-if (top == 9 || top == 24 || top == 12 || top == 13 || top == 14)
-
-
-8 6*/
-Token* token;
+Token* tokeng;
 tSymtable* global;
 tSymtable* local;
 bool in_function2 = false;
 
 void setGlobalVariables(Token* tok, tSymtable* glob){
-	token = tok;
+	tokeng = tok;
 	global = glob;
 }
 void setLocTable(tSymtable* loc){
@@ -66,25 +24,38 @@ void setInFunction(bool in){
 }
 
 int precedent_analys(Token* help){
+
 	symStack *stack = malloc(sizeof(symStack)); 	
 	symstackInit(stack); 	
 	symstackPush(stack, TOKEN_EOL);	
 	int a;							// pushnuti prvni hodnoty EOL
-	
-	if(help != NULL)
-		if((a = idkfunkce(stack, help)))
+
+	if(help != NULL){
+
+		if((a = idkfunkce(stack, help))){
 			return a;
-	if((a = idkfunkce(stack, token)))
-		return a;	
-	while(StackTopTerm(stack) != TOKEN_EOL && token->type != TOKEN_EOL)							// cyklus pobezi dokud nenarazi na znak konce radku
+		}
+	}
+	else
 	{
 
-		get_token(token);							// ziskame token
-		a = idkfunkce(stack, token);				// zavolame funkci pro zpracovani tokenu
+	}
+	
+	if((a = idkfunkce(stack, tokeng))){
+
+		return a;	
+
+	}
+	while(StackTopTerm(stack) != TOKEN_EOL && tokeng->type != TOKEN_EOL && tokeng->type != TOKEN_COLON)							// cyklus pobezi dokud nenarazi na znak konce radku
+	{
+
+		get_token(tokeng);							// ziskame token
+		a = idkfunkce(stack, tokeng);				// zavolame funkci pro zpracovani tokenu
 
 		if (a != SYNTAX_OK)
 			return SEM_ERROR_OTHER;
 	}
+
 	return SYNTAX_OK;
 }
 
@@ -92,14 +63,21 @@ int idkfunkce(symStack *stack, Token* token){
 		Token_type top = StackTopTerm(stack);						// do top nahrajeme nejvyssi terminal ze stacku
 
 
+
+		
+		
+ 
+
 		if (token->type == TOKEN_ID || token->type == TOKEN_INTEGER || token->type == TOKEN_STRING  || token->type == TOKEN_FLOAT)							//TODO je potreba zjitit co vse jsou identifikatory
-		{
-			if (top == TOKEN_R_BRACKET || top == TOKEN_ID || TOKEN_FLOAT || TOKEN_INTEGER || TOKEN_STRING)				//pokud je na vrcholu ) nebo identifikator, tak se vypise chyba, protoze nejsou kompatibilni
+		{ 
+
+			if (top == TOKEN_R_BRACKET || top == TOKEN_ID || top == TOKEN_FLOAT || top == TOKEN_INTEGER || top == TOKEN_STRING)				//pokud je na vrcholu ) nebo identifikator, tak se vypise chyba, protoze nejsou kompatibilni
 			{
+				
 				return SEM_ERROR_OTHER;				//nekompatibilni terminaly
 			}
 			else
-			{
+			{	
 				if (token->type == TOKEN_INTEGER)
 				{
 					stackPushOpen(stack);				// jinak posle zacatek rozvoje
@@ -121,18 +99,26 @@ int idkfunkce(symStack *stack, Token* token){
 				else if (token->type == TOKEN_ID)
 				{
 					tBSTNodePtr promnena;
-					if(in_function2){
+					int g = in_function2;
+					if(g == 1)
+					{
 						promnena = symtableSearch(local, token->attribute.string->string);
-						if(promnena == NULL){
-							promnena = symtableSearch(global, token->attribute.string->string);						
+
+						if(promnena == NULL)
+						{
+							promnena = symtableSearch(global, token->attribute.string->string);	
+
 							if(promnena == NULL)
-								return SYNTAX_ERROR;
+								return SEM_ERROR_DEF;
 						}
 						
-					}else{
-						promnena = symtableSearch(global, token->attribute.string->string);						
+					}
+					else
+					{
+						promnena = symtableSearch(global, token->attribute.string->string);	
+
 						if(promnena == NULL)
-							return SYNTAX_ERROR;
+							return SEM_ERROR_DEF;
 					}
 					
 
@@ -150,23 +136,29 @@ int idkfunkce(symStack *stack, Token* token){
 						stackPushOpen(stack);				// jinak posle zacatek rozvoje
 						symstackPush(stack,TOKEN_INTEGER);				// a znak identifikatoru
 						stack->top->inte = var_content->integer;
+						
 					}
 					else if (typ == 2)	//pokud je float
 					{
 						stackPushOpen(stack);				// jinak posle zacatek rozvoje
 						symstackPush(stack,TOKEN_FLOAT);				// a znak identifikatoru
 						stack->top->flt = var_content->flt;
+						
 					}
 					else if (typ == 3)	// pokud je string
 					{
 						stackPushOpen(stack);				// jinak posle zacatek rozvoje
 						symstackPush(stack,TOKEN_STRING);				// a znak identifikatoru
 						stack->top->string = var_content->string;
+						
 					}
 					else
 					{
 						return SYNTAX_ERROR;
 					}
+					char* lastidcko = malloc(token->attribute.string->length);
+					strcpy(lastidcko, token->attribute.string->string);
+					stack->top->nazev = lastidcko;
 				}
 			}
 		}
@@ -184,7 +176,7 @@ int idkfunkce(symStack *stack, Token* token){
 		}
 		else if (token->type == TOKEN_R_BRACKET)		// jako token dojde )
 		{
-			if (top == TOKEN_EOL )							//pokud je na vrcholu EOL, tak se vypise chyba, protoze nejsou kompatibilni
+			if (top == TOKEN_EOL || top == TOKEN_COLON )							//pokud je na vrcholu EOL, tak se vypise chyba, protoze nejsou kompatibilni
 			{
 				return SEM_ERROR_OTHER;				//nekompatibilni terminaly
 			}
@@ -205,10 +197,23 @@ int idkfunkce(symStack *stack, Token* token){
 				}
 			}
 		}
-		else if (token->type == TOKEN_EOL)			// jako token dojde EOL TODO ZEPTAT SE NA EOL
+		else if (token->type == TOKEN_EOL || token->type == TOKEN_COLON)			// jako token dojde EOL TODO ZEPTAT SE NA EOL
 		{
 			if (top == TOKEN_EOL )							//pokud je na vrcholu eol tak jsme uspesne zredukovali celej vyraz
 			{
+				if (stack->top->tokenType == TOKEN_PREC_INTEGER)
+				{
+					token->attribute.keyword = RET_INT;
+
+				}
+				else if (stack->top->tokenType == TOKEN_PREC_FLOAT)
+				{
+					token->attribute.keyword = RET_FLOAT;
+				}
+				else if (stack->top->tokenType == TOKEN_PREC_STRING)
+				{
+					token->attribute.keyword = RET_STRING;
+				}
 				return SYNTAX_OK;
 			}
 			else if (top == TOKEN_L_BRACKET)						//pokud je na vrcholu ( tak nastane chyba
@@ -228,7 +233,7 @@ int idkfunkce(symStack *stack, Token* token){
 		}
 		else if (token->type == TOKEN_PLUS || token->type == TOKEN_MINUS)					// jako token dojde +-
 		{
-			if (top == TOKEN_PLUS || top == TOKEN_MINUS || top == TOKEN_MUL || top == TOKEN_FLOAT_DIV || top == TOKEN_INT_DIV || top == TOKEN_PREC_ID || top == TOKEN_R_BRACKET) //pokud je top + - * / // i )
+			if (top == TOKEN_PLUS || top == TOKEN_MINUS || top == TOKEN_MUL || top == TOKEN_FLOAT_DIV || top == TOKEN_INT_DIV || top == TOKEN_INTEGER || top == TOKEN_STRING || top == TOKEN_FLOAT || top == TOKEN_INTEGER || top == TOKEN_STRING || top == TOKEN_FLOAT || top == TOKEN_R_BRACKET) //pokud je top + - * / // i )
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
@@ -254,7 +259,7 @@ int idkfunkce(symStack *stack, Token* token){
 		}
 		else if (token->type == TOKEN_MUL || token->type == TOKEN_FLOAT_DIV || token->type == TOKEN_INT_DIV)					// jako token dojde * / //
 		{
-			if (top == TOKEN_R_BRACKET || top == TOKEN_PREC_ID || top == TOKEN_MUL || top == TOKEN_FLOAT_DIV || top == TOKEN_INT_DIV)
+			if (top == TOKEN_R_BRACKET || top == TOKEN_INTEGER || top == TOKEN_STRING || top == TOKEN_FLOAT || top == TOKEN_MUL || top == TOKEN_FLOAT_DIV || top == TOKEN_INT_DIV)
 			{
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
 				reduction(stack);					// proved redukci
@@ -321,24 +326,29 @@ int idkfunkce(symStack *stack, Token* token){
 			}
 			else
 			{
+
 				symstackPush(stack,TOKEN_PREC_CLOSE);				//pushni konec rozvoje >
+
 				reduction(stack);					// proved redukci
+
 				int b = idkfunkce(stack, token);		// zavola sebe sama rekurzivne pro vyhodnoceni dalsich redukci
+
 				if (b != SYNTAX_OK)
 				{
 					return SEM_ERROR_OTHER;
 				}	
 			}
 		}
+
 		return SYNTAX_OK;	
 }
 
 Token_type StackTopTerm (symStack *stack){
 
-	symStack *temp = = malloc(sizeof(symStack)); 
+	symStack *temp = malloc(sizeof(symStack)); 
 	temp->top = stack->top;
 	Token_type tokenhelp;
-	
+
 	if (temp->top == NULL)
 	{
 		return TOKEN_ERROR;
@@ -357,11 +367,11 @@ Token_type StackTopTerm (symStack *stack){
 	    	}
 	    	else
 	    	{
-	    		return TOKEN_ERROR
+	    		return TOKEN_ERROR;
 	    	}
 		}
 
-		if (tokenhelp > TOKEN_NEQ)
+		if (tokenhelp <= TOKEN_NEQ)
 		{
 			return tokenhelp;
 		}
@@ -370,6 +380,7 @@ Token_type StackTopTerm (symStack *stack){
 			return TOKEN_ERROR;
 		}
 	}
+}
 
 int stackPushOpen(symStack *stack){
 	if(StackTopTerm(stack) == symstackTop(stack))
@@ -427,17 +438,18 @@ symStackItem* stackPosition(symStack *stack, int j){
 }
 
 int reduction(symStack *stack){
-
 	symStackItem* temp = stack->top;
 	Token_type topterm=StackTopTerm(stack);
 	Token_type help=symstackTop(stack);
 	int i=1;
 
-	while(temp->tokenType != TOKEN_PREC_OPEN || i < 10) // zjisteni kolik zaznamu se nachazi v redukci pr < id + id > => 5
+
+	while(temp->tokenType != 26 || i >10) // zjisteni kolik zaznamu se nachazi v redukci pr < id + id > => 5
 	{
 		i++;
 		temp = temp->next;
 	}
+
 
 
 	if(topterm == TOKEN_INTEGER || topterm == TOKEN_FLOAT || topterm == TOKEN_STRING) // nutno dodelat nevim jak na to potreba roylisit lokalni a globalni promenou
@@ -447,13 +459,25 @@ int reduction(symStack *stack){
 		{
 			symstackPop(stack);
 			help=symstackTop(stack);
-			symStackItem* temp2 = malloc(sizeof(symStackItem));;
+			symStackItem* temp2 = malloc(sizeof(symStackItem));
+			if(stack->top->nazev != NULL){
+				if(in_function2){
+					if(symtableSearch(global, stack->top->nazev) == NULL)
+						printf("PUSHS LF@%s\n", stack->top->nazev);
+					else
+						printf("PUSHS GF@%s\n", stack->top->nazev);
+				}else{
+					printf("PUSHS GF@%s\n", stack->top->nazev);
+				}
+			}
 			if (help == TOKEN_INTEGER)
 			{
 				temp2->inte = stack->top->inte;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_INTEGER);
 				stack->top->inte = temp2->inte;
+				if(stack->top->nazev == NULL)
+					printf("PUSHS int@%d", stack->top->inte);
 				
 			}
 			else if (help == TOKEN_FLOAT)
@@ -462,6 +486,8 @@ int reduction(symStack *stack){
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_FLOAT);
 				stack->top->flt = temp2->flt;
+				if(stack->top->nazev == NULL)
+					printf("PUSHS float@%a", stack->top->flt);
 			}
 			else if (help ==TOKEN_STRING)
 			{
@@ -469,6 +495,8 @@ int reduction(symStack *stack){
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_STRING);
 				stack->top->string = temp2->string;
+				if(stack->top->nazev == NULL)
+					printf("PUSHS string@%s", stack->top->string);
 			}
 			else
 			{
@@ -476,6 +504,7 @@ int reduction(symStack *stack){
 				return SYNTAX_ERROR;	
 			}
 			free(temp2);
+			
 		}
 		else
 		{
@@ -529,12 +558,12 @@ int reduction(symStack *stack){
 		if (topterm == TOKEN_PLUS)
 		{
 			if (i == 5)
-			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+			{	
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_PLUS)
@@ -551,9 +580,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT);
 						stack->top->flt = 42.0;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("ADDS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType ==TOKEN_PREC_FLOAT)
@@ -576,10 +605,10 @@ int reduction(symStack *stack){
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_STRING);
-						printf("POPS GF@$AXS\n");
-						printf("POPS GF@$BXS\n");
-						printf("CONCAT GF@$CXS GF@$BXS GF@$AXS\n");
-						printf("PUSHS GF@$CXS\n");
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("CONCAT GF@?CX? GF@?BX? GF@?AX?\n");
+						printf("PUSHS GF@?CX?\n");
 					}
 					else
 					{
@@ -601,11 +630,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MINUS)
 				{
@@ -629,9 +658,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT);
 						stack->top->flt = 42.0;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("SUBS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
@@ -661,11 +690,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_FLOAT_DIV)
 				{
@@ -683,10 +712,10 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT); 
 						stack->top->flt = 42.0;
-						printf("POPS GF@$AX\n");
-						printf("INT2FLOAT GF@$AXF GF@$AX\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
+						printf("INT2FLOATS\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("DIVS\n");
 
 
@@ -715,9 +744,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_FLOAT); 
 						stack->top->flt = 42.0;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("DIVS\n");
 					}
 					else
@@ -735,11 +764,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && druhej->tokenType == TOKEN_PREC_INTEGER && treti->tokenType == TOKEN_INT_DIV && ctvrtej->tokenType == TOKEN_PREC_INTEGER && patej->tokenType == TOKEN_PREC_OPEN)
 				{
@@ -770,11 +799,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MUL)
 				{
@@ -798,9 +827,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->flt = 42.0;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("MULS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
@@ -831,11 +860,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MEQ)
 				{
@@ -844,12 +873,29 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
+						printf("INT2FLOATS\n");
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("GT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
+
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
+						printf("POPS GF@?AX?\n");
+						printf("INT2FLOATS\n");
+						printf("POPS GF@?BX?\n");
+						printf("GT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 						
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
@@ -857,14 +903,26 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
-						
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("GT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 					}
 					else if (druhej->tokenType== TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
-						printf("LTS\n");
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("GT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 					}
 					else 
 					{
@@ -886,11 +944,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_MORE)
 				{
@@ -908,9 +966,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("GTS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
@@ -946,11 +1004,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_LEQ)
 				{
@@ -959,6 +1017,14 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
+						printf("INT2FLOATS\n");
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("LT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
@@ -966,18 +1032,40 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
+						printf("POPS GF@?AX?\n");
+						printf("INT2FLOATS\n");
+						printf("POPS GF@?BX?\n");
+						printf("LT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("LT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER )
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
+						printf("POPS GF@?AX?\n");
+						printf("POPS GF@?BX?\n");
+						printf("LT GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("EQ GF@?CX? GF@?AX? GF@?BX?\n");
+						printf("PUSHS GF@?CX?\n");
+						printf("ORS\n");
 					}
 					else 
 					{
@@ -996,13 +1084,14 @@ int reduction(symStack *stack){
 		}
 		else if (topterm == TOKEN_LESS)
 		{
+			
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_LESS)
 				{
@@ -1019,9 +1108,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("LTS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
@@ -1040,16 +1129,19 @@ int reduction(symStack *stack){
 					}
 					else 
 					{
+						
 						return SYNTAX_ERROR;
 					}
 				}
 				else
 				{
+					
 					return SYNTAX_ERROR;
 				}
 			}
 			else
 			{
+				
 				return SYNTAX_ERROR;
 			}
 		}
@@ -1057,11 +1149,11 @@ int reduction(symStack *stack){
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_EQ)
 				{
@@ -1079,9 +1171,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("EQS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
@@ -1117,15 +1209,15 @@ int reduction(symStack *stack){
 		{
 				return SYNTAX_ERROR;			
 		}
-		else if (topterm == TOKEN_NEQ)
+		else if (topterm == TOKEN_NEQ)	//done
 		{
 			if (i == 5)
 			{
-				symStackItem* prvni = stackPosition(stack, 1);
-				symStackItem* druhej = stackPosition(stack, 2);
-				symStackItem* treti = stackPosition(stack, 3);
-				symStackItem* ctvrtej = stackPosition(stack, 4);
-				symStackItem* patej = stackPosition(stack, 5);
+				symStackItem* prvni = stackPosition(stack, 0);
+				symStackItem* druhej = stackPosition(stack, 1);
+				symStackItem* treti = stackPosition(stack, 2);
+				symStackItem* ctvrtej = stackPosition(stack, 3);
+				symStackItem* patej = stackPosition(stack, 4);
 
 				if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && treti->tokenType == TOKEN_NEQ)
 				{
@@ -1144,9 +1236,9 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 1;
-						printf("POPS GF@$AXF\n");
+						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
-						printf("PUSHS GF@$AXF\n");
+						printf("PUSHS GF@?AX?\n");
 						printf("EQS\n");
 						printf("NOTS\n");
 					}

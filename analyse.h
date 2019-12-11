@@ -32,4 +32,6 @@ int insertVestFunction(char* s, int leng, int pocet);
 
 void initVariable(tInsideVariable *content);
 
+void genVestFunctions();
+
 #endif
