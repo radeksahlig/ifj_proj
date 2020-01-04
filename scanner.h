@@ -1,3 +1,15 @@
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  scanner.h                                        *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
+
 #ifndef _SCANNER_H
 #define _SCANNER_H
 

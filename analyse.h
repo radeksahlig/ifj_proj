@@ -1,3 +1,15 @@
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  analyse.h                                        *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
+
 #ifndef _ANALYSE_H
 #define _ANALYSE_H
 
@@ -20,11 +32,11 @@ static int def();
 
 static int rovn(Token* token, char* lastid);
 
-static int value();
+static int value(int count, char* fce);
 
-static int arg(int* params, bool sub, int* count);
+static int arg(int* params, bool sub, int* count, char* fce);
 
-static int arg_n(int* params, bool sub, int* count);
+static int arg_n(int* params, bool sub, int* count, char* fce);
 
 int initVestFunctions();
 

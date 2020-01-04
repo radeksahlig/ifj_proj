@@ -1,3 +1,15 @@
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  analyse.c                                        *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -78,6 +90,48 @@ tSymtable* local;
 int not_defined = 0;
 bool in_function = false;
 int global_label = 1;
+
+int new_token(Token *token){
+	int retval= get_token(token);
+	switch(token->type){
+	    case TOKEN_EMPTY_FILE : printf("token_empty \n");break;
+	    case TOKEN_KEYWORD : printf("token_keyword \n");break;
+	    case TOKEN_ID :printf("token_id \n");break;
+	    case TOKEN_INTEGER : printf("token_int \n");break;
+	    case TOKEN_FLOAT : printf("token_float \n");break;
+	    case TOKEN_STRING : printf("token_string \n");break;
+	    case TOKEN_EOF : printf("token_eof \n");break;
+	    case TOKEN_EOL : printf("token_eol \n");break;
+	    case TOKEN_COMMA : printf("token_comma \n");break;
+	    case TOKEN_L_BRACKET : printf("token_( \n");break;
+	    case TOKEN_R_BRACKET : printf("token_) \n");break;
+	    case TOKEN_PLUS : printf("token_+ \n");break;
+	    case TOKEN_MINUS : printf("token_- \n");break;
+	    case TOKEN_MUL : printf("token_* \n");break;
+	    case TOKEN_FLOAT_DIV : printf("token_/ \n");break;
+	    case TOKEN_INT_DIV : printf("token_// \n");break;
+	    case TOKEN_MEQ : printf("token_>= \n");break;
+	    case TOKEN_MORE : printf("token_> \n");break;
+	    case TOKEN_LEQ : printf("token_<= \n");break;
+	    case TOKEN_LESS : printf("token_< \n");break;
+	    case TOKEN_EQ : printf("token_== \n");break;
+	    case TOKEN_COLON : printf("token_: \n");break;
+	    case TOKEN_ASSIGN : printf("token_= \n");break;
+	    case TOKEN_NEQ : printf("token_!= \n");break;
+	    case TOKEN_INDENT : printf("token_indent --------------->\n");break;
+	    case TOKEN_DEDENT : printf("token_dedent <---------------\n");break;
+	    default : printf("nemůže nastat !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+	}
+	if(token->type == TOKEN_STRING){
+		printf(" ## %s ##\n", token->attribute.string->string);	
+	}
+	if(retval != 0){
+		printf("%d return new_token\n", retval);
+		return retval;}
+	return 0;
+}
+
+
 
 int prog(){
 	int retval;
@@ -183,7 +237,6 @@ int prog(){
 		printf("#Konec funkce %s\n", fce);
 		printf("LABEL !konec!%s\n", fce);
 		free(fce);
-		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
 		in_function = false;
 		setInFunction(false);
 		return prog();
@@ -207,14 +260,13 @@ int prog(){
 
 		printf("DEFVAR GF@$ifprom%d\n", label);
 		printf("POPS GF@$ifprom%d\n", label);
-		printf("JUMPIFNEQ $end$ifu%d GF@$ifprom%d bool@true\n", label, label);
+		printf("JUMPIFNEQ $else$%d GF@$ifprom%d bool@true\n", label, label);
 
 		if(token.type != TOKEN_COLON)
 			return SYNTAX_ERROR;
 		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
 		CHECK_NUM_INDENT(cur_indent, prev_indent);
 
-		
 		CHECK_STMT(prev_indent, cur_indent);
 		cur_indent = 0;
 
@@ -288,7 +340,7 @@ static int stmt(int prev_indent, int cur_indent){
 
 		printf("DEFVAR GF@$ifprom%d\n", label);
 		printf("POPS GF@$ifprom%d\n", label);
-		printf("JUMPIFNEQ $end$ifu%d GF@$ifprom%d bool@true\n", label, label);
+		printf("JUMPIFNEQ $else$%d GF@$ifprom%d bool@true\n", label, label);
 		//podmínka skoku
 
 		if(token.type != TOKEN_COLON)
@@ -316,7 +368,6 @@ static int stmt(int prev_indent, int cur_indent){
 
 		return stmt(prev_indent, cur_indent);
 	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_WHILE){
-		printf("---in while stmt\n"); 
 		//9. <stmt> ->  while <expr> : EOL <stmt> EOL <stmt>
 
 		printf("#Začátek while v stmt\n");
@@ -366,13 +417,13 @@ static int stmt(int prev_indent, int cur_indent){
 		if(token.type != TOKEN_EOL)
 			return SYNTAX_ERROR;
 		printf("POPS LF@%%retval\n");
-		
+		GET_TOKEN();
 		CHECK_NUM_DEDENT(cur_indent, prev_indent);
 	}
 	if(token.type == TOKEN_DEDENT){
-        CHECK_NUM_DEDENT(cur_indent, prev_indent);
-    }
-    //14. <stmt> -> ε
+        	CHECK_NUM_DEDENT(cur_indent, prev_indent);
+    	}
+    	//14. <stmt> -> ε
 	//není return -> retval = None
 	return SYNTAX_OK;
 }
@@ -401,6 +452,10 @@ static int params(tInsideFunction* funkce){
 
 	strcpy((char *) funkce->paramName[funkce->parameters],token.attribute.string->string);
 	funkce->parameters += 1;
+	
+	tInsideVariable* content = idcko->content;
+	content->dataType = 1;
+
 	GET_TOKEN();
         return param_n(funkce);
 	}
@@ -433,6 +488,10 @@ static int param_n(tInsideFunction* funkce){
 		if(funkce->parameters == 1)
 			strcpy(funkce->prvniparam, token.attribute.string->string);
 		funkce->parameters += 1;
+		
+		tInsideVariable* content = idcko->content;
+		content->dataType = 1;
+
 		GET_TOKEN();
 		return param_n(funkce);	
 	}else if(token.type == TOKEN_R_BRACKET)
@@ -451,7 +510,7 @@ static int def(){
 		if(strcmp(pid.attribute.string->string,"print") == 0){
 			int a = 11;
 			GET_TOKEN();
-			if((retval= arg(&a, false, &a)))
+			if((retval= arg(&a, false, &a, "")))
 				return retval;
 		}else{	
 			tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
@@ -481,13 +540,12 @@ static int def(){
 	
 			GET_TOKEN();
 			//Výpis
-			printf("#Tvorba framu pro %s\n", pid.attribute.string->string);
 			printf("CREATEFRAME\n");
 
 			char* fce = malloc(pid.attribute.string->length);
 			strcpy(fce, pid.attribute.string->string);
 			int count = 1;
-			if((retval= arg(&param, fce_content->defined, &count)))
+			if((retval= arg(&param, fce_content->defined, &count, fce)))
 				return retval;
 
 			//Kontrola počtu parametrů
@@ -553,6 +611,17 @@ static int def(){
 		char* lastidcko = malloc(pid.attribute.string->length);
 		strcpy(lastidcko, pid.attribute.string->string);
 		GET_TOKEN();
+     		if(token.type == TOKEN_ID){
+			if(strcmp(token.attribute.string->string,"inputi") == 0){
+				var_content->dataType = 1;
+			}else if(strcmp(token.attribute.string->string,"inputf") == 0){
+				var_content->dataType = 2;
+			}else if(strcmp(token.attribute.string->string,"inputs") == 0){
+				var_content->dataType = 3;
+			}else if(var_content->dataType == 0){
+				var_content->dataType = 1;
+			}	
+		}	
 		if((retval = rovn(&pid, lastidcko)))
 			return retval;
 		free(lastidcko);
@@ -564,6 +633,7 @@ static int def(){
 
 static int rovn(Token* pid, char* lastid){
     int retval;
+    bool mov = false;
     if(token.type == TOKEN_ID){
         //23. <rovn> -> id(<arg>)
 	Token* help = malloc(sizeof(Token));
@@ -606,10 +676,10 @@ static int rovn(Token* pid, char* lastid){
 		
 		GET_TOKEN();
 		//Výpis
-		printf("#Tvorba framu pro %s\n", pid->attribute.string->string);
+		printf("#Tvorba framu pro %s\n", fce);
 		printf("CREATEFRAME\n");
 		int count = 1;
-		if((retval= arg(&param, fce_content->defined, &count)))
+		if((retval= arg(&param, fce_content->defined, &count, fce)))
 			return retval;
 
 		//Kontrola počtu parametrů
@@ -623,7 +693,7 @@ static int rovn(Token* pid, char* lastid){
 		
 		if(token.type != TOKEN_R_BRACKET)
 			return SYNTAX_ERROR;
-
+		mov = true;
 		printf("CALL !%s\n", fce);
 		if(in_function)
 			printf("MOVE LF@%s TF@%%retval\n", lastid);
@@ -652,18 +722,20 @@ static int rovn(Token* pid, char* lastid){
 		var_content = idcko->content;
 	else
 		return INTERNAL_ERROR;
-
-	if(in_function){
-		if(symtableSearch(local, lastid) != NULL)
-			printf("POPS LF@%s\n", lastid);
-		else
+	if(!mov){
+		if(in_function){
+			if(symtableSearch(local, lastid) != NULL)
+				printf("POPS LF@%s\n", lastid);
+			else
+				printf("POPS GF@%s\n", lastid);	
+		}else{
 			printf("POPS GF@%s\n", lastid);	
-	}else{
-		printf("POPS GF@%s\n", lastid);	
+		}
 	}
 
 	if(token.attribute.keyword == RET_STRING){//Je to string
 		free(var_content->string->string);
+		var_content->string->length = 0;
 		d_string_add_string(token.attribute.string, var_content->string);
 		var_content->dataType = 3;
 	}else if(token.attribute.keyword == RET_INT){//Je to int
@@ -678,7 +750,7 @@ static int rovn(Token* pid, char* lastid){
     return SYNTAX_OK;
 }
 
-static int value(){
+static int value(int count, char* fce){
     if(token.type == TOKEN_INTEGER){
         //24. <value> -> int_value
 	printf("int@%d\n", token.attribute.integer);
@@ -707,10 +779,11 @@ static int value(){
 	printf("float@%a\n", token.attribute.flt);
         return SYNTAX_OK;
     }else if(token.type == TOKEN_ID){
+	tBSTNodePtr funkce;
 	if(in_function){
-		tBSTNodePtr funkce = symtableSearch(local, token.attribute.string->string);
+		funkce = symtableSearch(local, token.attribute.string->string);
 		if(funkce == NULL){
-			tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
+			funkce = symtableSearch(global, token.attribute.string->string);
 			if(funkce == NULL)
 				return SEM_ERROR_DEF;
 			printf("GF@");
@@ -718,29 +791,42 @@ static int value(){
 			printf("LF@");		
 		}
 	}else{
-		tBSTNodePtr funkce = symtableSearch(global, token.attribute.string->string);
+		funkce = symtableSearch(global, token.attribute.string->string);
 		if(funkce == NULL)
 			return SEM_ERROR_DEF;
 		printf("GF@");
 	}
 	printf("%s\n", token.attribute.string->string);
+
+	if(strcmp(fce, "") != 0){
+		tBSTNodePtr prvfce = symtableSearch(global, fce);
+		tInsideFunction *content = prvfce->content;
+		tBSTNodePtr prom;	
+		if(count == 1)
+			prom = symtableSearch(content->local, content->prvniparam);
+		else
+			prom = symtableSearch(content->local, (char *)content->paramName[count]);
+		tInsideVariable *cnt = prom->content;
+		tInsideVariable *cntprom = funkce->content;
+   		cnt->dataType = cntprom->dataType;
+	}
 	return SYNTAX_OK;
     }
     return SYNTAX_ERROR;
 }
 
-static int arg(int* param, bool sub, int* count){
+static int arg(int* param, bool sub, int* count, char* fce){
     //29. <arg> -> <value> <arg_n>
 	if(token.type == TOKEN_FLOAT || token.type == TOKEN_STRING || token.type == TOKEN_INTEGER || token.type == TOKEN_ID){
 		int retval;
 		if((*param) == 11 && (*count) == 11){
 			printf("WRITE ");
-			if((retval= value()))
+			if((retval= value(0, "")))
 				return retval;
 		}else{
 			printf("DEFVAR TF@%%%d\n", (*count));
 			printf("MOVE TF@%%%d ", (*count)++);
-		    	if((retval= value()))
+		    	if((retval= value((*count)-2, fce)))
 				return retval;
 			if(sub)
 				(*param) -= 1;
@@ -748,7 +834,7 @@ static int arg(int* param, bool sub, int* count){
 				(*param) += 1;	
 		}
 		GET_TOKEN();
-	    	return arg_n(param, sub, count);
+	    	return arg_n(param, sub, count, fce);
 	}else if(token.type == TOKEN_R_BRACKET){
 		//28. <arg> -> ε
 		return SYNTAX_OK;	
@@ -756,19 +842,22 @@ static int arg(int* param, bool sub, int* count){
 	return SYNTAX_ERROR;
 }
 
-static int arg_n(int* param, bool sub, int* count){
+static int arg_n(int* param, bool sub, int* count, char* fce){
 	int retval;
     if(token.type == TOKEN_COMMA){
         //31. <arg_n> -> , <value> <arg-n>
 	if((*param) == 11 && (*count) == 11){
 		printf("WRITE ");
-		GET_TOKEN_CHECK_RULE(value);
+		GET_TOKEN();
+		if((retval= value(0, "")))
+			return retval;
 	}else{
 		
 		printf("DEFVAR TF@%%%d\n", (*count));
 		printf("MOVE TF@%%%d ", (*count)++);
-		GET_TOKEN_CHECK_RULE(value);
-
+		GET_TOKEN();
+		if((retval= value((*count)-2, fce)))
+			return retval;
 		if(sub)
 			(*param) -= 1;
 		else
@@ -776,7 +865,7 @@ static int arg_n(int* param, bool sub, int* count){
 	}
         GET_TOKEN();
 
-        return arg_n(param, sub, count);
+        return arg_n(param, sub, count, fce);
 
     }else if(token.type == TOKEN_R_BRACKET){
 	//30 <arg_n> -> ε
@@ -889,6 +978,7 @@ void genVestFunctions(){
 	printf("PUSHFRAME\n");
 	printf("DEFVAR LF@%%retval\n");
 	printf("READ LF@%%retval string\n");
+        printf("PUSHS LF@%%retval\n");
 	printf("POPFRAME\n");
 	printf("RETURN\n");
 	printf("#Konec funkce inputs\n");	
@@ -899,6 +989,7 @@ void genVestFunctions(){
 	printf("PUSHFRAME\n");
 	printf("DEFVAR LF@%%retval\n");
 	printf("READ LF@%%retval float\n");
+	printf("PUSHS LF@%%retval\n");
 	printf("POPFRAME\n");
 	printf("RETURN\n");
 	printf("#Konec funkce inputf\n");
@@ -909,6 +1000,7 @@ void genVestFunctions(){
 	printf("PUSHFRAME\n");
 	printf("DEFVAR LF@%%retval\n");
 	printf("READ LF@%%retval int\n");
+	printf("PUSHS LF@%%retval\n");
 	printf("POPFRAME\n");
 	printf("RETURN\n");
 	printf("#Konec funkce inputi\n");

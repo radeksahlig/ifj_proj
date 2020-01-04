@@ -1,6 +1,14 @@
-/*----------------------------------------------------
-
-----------------------------------------------------*/
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  scanner.c                                        *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
 
 #include <stdio.h>
 #include <ctype.h>
@@ -40,7 +48,6 @@
 #define THIRD_QUOTE_END     130
 #define FIRST_QUOTE_END     131
 #define LINE_COMMENT        132
-#define INDENTATION_PROCESS 133
 
 
 FILE *file;
@@ -49,21 +56,15 @@ bool in_indentation = false;
 Simple_stack* indentation_stack;
 bool new_line = true;
 
+
 //stack functions
 void stack_init(Simple_stack* stack){
     stack->top->value = 0;
     stack->top->next = NULL;
 }
 
-void set_stack(Simple_stack* stack){
-    indentation_stack = stack;
-    Simple_stack_item* new_item = (Simple_stack_item*)malloc(sizeof(Simple_stack_item));
-    indentation_stack->top = new_item;
-    stack_init(indentation_stack);
-}
-
 void stack_pop(Simple_stack* stack) {
-    Simple_stack_item* popped = stack->top;      
+    Simple_stack_item* popped = stack->top;        
     stack->top = popped->next;
 
     free(popped);   
@@ -85,9 +86,6 @@ bool stack_push(Simple_stack* stack, int num){
 
 //------------------------
 
-void set_file(FILE* fil){
-    file = fil;
-}
 
 int free_the_stuff(int retval, Dynamic_string* d_str){
     free(d_str->string);
@@ -126,6 +124,7 @@ int process_id(Dynamic_string* d_str, Token* token){
         }
         return free_the_stuff(SCANNER_OK, d_str);
     }
+
     token->type = TOKEN_KEYWORD;
     return free_the_stuff(SCANNER_OK, d_str);   
 }
@@ -151,10 +150,19 @@ void set_d_string(Dynamic_string* d_str){
 	dynamic_str = d_str;
 }
 
-int indentation_count = 0;
+void set_file(FILE* fil){
+	file = fil;
+}
+
+void set_stack(Simple_stack* stack){
+	indentation_stack = stack;
+	Simple_stack_item* new_item = (Simple_stack_item*)malloc(sizeof(Simple_stack_item));
+	indentation_stack->top = new_item;
+	stack_init(indentation_stack);
+}
+
 //Main function
 int get_token(Token *token){
-    
 
     if(file == NULL || dynamic_str == NULL){
         return INTERNAL_ERROR;        
@@ -164,6 +172,7 @@ int get_token(Token *token){
 
 
     int scanner_state = START_STATE;
+    int indentation_count = 0;
     char c;
     char hexa[2];
     
@@ -179,58 +188,43 @@ int get_token(Token *token){
     while (true){
         
         c = (char) getc(file);
-
         switch(scanner_state){
             
             case(START_STATE):
-                
-                if(in_indentation && !new_line){
-                    if(c == '#'){
-                        scanner_state = LINE_COMMENT;
-                    }
-                    else{
-                        scanner_state = INDENTATION_PROCESS;
-                    }
-                }
-
-                else if(c == ' ' && new_line){
-                    in_indentation = true;
-                    new_line = false;
-                    scanner_state = INDENTATION_COUNTING;
-                    indentation_count++;
-                }
-
-                else if(c != ' ' && new_line && c != '\n'){
-                    ungetc(c,file);
-                    in_indentation = true;
-                    new_line = false;
-                    scanner_state = INDENTATION_PROCESS;
-                }
-
-                else if(!new_line && isspace(c) && c !='\n' && !in_indentation){
-                    scanner_state = START_STATE;
-                }
-                
+		if(!isspace(c) && new_line && indentation_stack->top->value > 0){
+			ungetc(c, file);
+			scanner_state = DEDENT_STATE;	
+			new_line = true;
+				break;
+		
+		}
                 else if (c == '\n'){
                     token->type = TOKEN_EOL;
                     indentation_count = 0;
                     new_line = true;
                     return free_the_stuff(SCANNER_OK, str);
                 }
-
-                else if (c == EOF){
-                    if(indentation_count < indentation_stack->top->value){
-                        ungetc(c,file);
-                        stack_pop(indentation_stack);
-                        token->type = TOKEN_DEDENT;
+		else if(isspace(c) && !new_line){
+                    scanner_state = START_STATE;
+                }
+                else if(c == ' ' && new_line){
+                    new_line = false;
+                    in_indentation = true;
+                    scanner_state = INDENTATION_COUNTING;
+                    if(indentation_stack->top->value < ++indentation_count){
+                        stack_push(indentation_stack, indentation_count);
+                        token->type = TOKEN_INDENT;
                         return free_the_stuff(SCANNER_OK, str);
                     }
+                }
+
+                else if (c == EOF){
                     token->type = TOKEN_EOF;
                     return free_the_stuff(SCANNER_OK, str);
                 }
                 
                 else if (c == '_' || isalpha(c)){
-
+                    new_line = false;
                     if(!d_string_add_char(str, (char) c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -239,7 +233,7 @@ int get_token(Token *token){
                 }
 
                 else if (isdigit(c)){
-
+                    
                     if(!d_string_add_char(str, c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -313,58 +307,57 @@ int get_token(Token *token){
                     token->type = TOKEN_R_BRACKET;
                     return free_the_stuff(SCANNER_OK, str);
                 }
-                else{
-                    return free_the_stuff(SCANNER_ERROR, str);
-                }
-                
-                new_line = false;
-
+		new_line = false;
                 break;
 
             case (INDENTATION_COUNTING):
                 if (c == ' '){
-                    indentation_count++;
                     scanner_state = INDENTATION_COUNTING;
+                    if(indentation_stack->top->value < ++indentation_count){
+                        stack_push(indentation_stack, indentation_count);
+                        token->type = TOKEN_INDENT;
+                        return free_the_stuff(SCANNER_OK, str);
+                    }
                 }
-                else if (c == '#' || c == '\n'){
-                    indentation_count = 0;
-                    ungetc(c, file);
-                    scanner_state = START_STATE;
-                }
-                else if (isspace(c) && c != ' '){
+                else if(isspace(c) && c != ' '){
                     scanner_state = INDENTATION_COUNTING;
                 }
                 else{
-                    scanner_state = INDENTATION_PROCESS;
+                    //indentation ended, process it
+                    ungetc(c, file);
+
+                    if(indentation_count < indentation_stack->top->value){
+                        scanner_state = DEDENT_STATE;
+                        stack_pop(indentation_stack);
+                        token->type = TOKEN_DEDENT;
+                        return free_the_stuff(SCANNER_OK, str);
+                    }
+                    else if(indentation_count == indentation_stack->top->value){
+                        scanner_state = START_STATE;
+                    } 
                 }
-            
                 break;
 
-            case (INDENTATION_PROCESS):
-
-                ungetc(c,file);
-                
-                if(indentation_stack->top->value < indentation_count){
-                        int topval = indentation_stack->top->value;
-                        stack_push(indentation_stack, ++topval);
-                        token->type = TOKEN_INDENT;
-                        return free_the_stuff(SCANNER_OK, str);
-                }
-                else if(indentation_count < indentation_stack->top->value){
+            case (DEDENT_STATE):
+                ungetc(c, file);
+                if (indentation_count < indentation_stack->top->value){
+                    scanner_state = DEDENT_STATE;
                     stack_pop(indentation_stack);
                     token->type = TOKEN_DEDENT;
                     return free_the_stuff(SCANNER_OK, str);
                 }
-                else{
-                    in_indentation = false;
-                    indentation_count = 0;
+                else if(indentation_count == indentation_stack->top->value){
                     scanner_state = START_STATE;
                 }
-
+                else{
+                    return free_the_stuff(INTERNAL_ERROR, str);
+                }
+                         
                 break;
-                
+
             case (IDKW_STATE):
                 if(isalnum(c) || c == '_'){ //next char is alphanumeric or '_'
+                     
                      if(!d_string_add_char(str, (char) c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -381,7 +374,6 @@ int get_token(Token *token){
                 break;
             
             case (NUMBER_STATE):
-
                 if(isdigit(c)){
                     
                     if(!d_string_add_char(str, c)){
@@ -426,6 +418,7 @@ int get_token(Token *token){
             case (DECIMAL_STATE):
                 if(isdigit(c)){
                     scanner_state = DECIMAL_STATE; //stay in this state, might be unnecessary
+                    
                     if(!d_string_add_char(str, c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -438,7 +431,6 @@ int get_token(Token *token){
                     }
                 }
                 else{
-                    
                     ungetc(c, file);
                     return process_float(str, token);
                 }
@@ -509,6 +501,7 @@ int get_token(Token *token){
                     return free_the_stuff(SCANNER_ERROR, str);
                 }
                 else{ //anything else simply belongs to the string
+                    
                     if(!d_string_add_char(str, c)){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -561,7 +554,7 @@ int get_token(Token *token){
                     scanner_state = HEXA_FIRST_STATE;
                 }
                 else if(isalpha(c) || isdigit(c)){
-
+                    //printf("unknown escape\n");
                     if(!d_string_add_char(str, '\\')){
                         return free_the_stuff(INTERNAL_ERROR, str);
                     }
@@ -579,6 +572,7 @@ int get_token(Token *token){
             case (HEXA_FIRST_STATE):
                 if(isdigit(c) || tolower(c) == 'a' || tolower(c) == 'b' || tolower(c) == 'c' || tolower(c) == 'd' || tolower(c) == 'e' || tolower(c) == 'f'){
                     hexa[0] = (char) c;
+                    printf("%c\n", hexa[0]);
                     scanner_state = HEXA_SECOND_STATE;
                 }
                 else{
@@ -610,10 +604,8 @@ int get_token(Token *token){
                 if(c == '\n'){
                     scanner_state = START_STATE;
                     token->type = TOKEN_EOL;
-                    return free_the_stuff(SCANNER_OK, str);
-                }
-                else if(c == EOF){
-                    token->type = TOKEN_EOF;
+		    indentation_count = 0;
+                    new_line = true;
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
@@ -696,8 +688,6 @@ int get_token(Token *token){
                     token->type = TOKEN_MORE;
                     return free_the_stuff(SCANNER_OK, str);
                 }
-            
-                break;
 
             
             case (LESS_STATE):
@@ -711,8 +701,6 @@ int get_token(Token *token){
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
-                break;
-
             case (EQ_STATE):
                 if (c == '='){
                     token->type = TOKEN_EQ;
@@ -722,7 +710,6 @@ int get_token(Token *token){
                     token->type = TOKEN_ASSIGN;
                     return free_the_stuff(SCANNER_OK, str);
                 }
-                break;
 
             case (NEQ_STATE):
                 if (c == '='){
@@ -732,7 +719,6 @@ int get_token(Token *token){
                 else{
                     return free_the_stuff(SCANNER_ERROR, str);
                 }
-                break;
             
         }
     }

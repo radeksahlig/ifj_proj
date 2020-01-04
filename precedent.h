@@ -1,3 +1,15 @@
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  precedent.h                                      *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
+
 #ifndef _PRECEDENT_H
 #define _PRECEDENT_H
 
@@ -10,9 +22,9 @@
 #include "error.h"
 #include "string.h"
 
-int precedent_analys(Token* help); //TODO TOKNE TYPE
+int precedent_analys(Token* help);
 
-int idkfunkce(symStack *stack, Token* token); //TODO TOKNE TYPE
+int idkfunkce(symStack *stack, Token* token);
 
 Token_type StackTopTerm (symStack *stack);
 
@@ -20,7 +32,7 @@ int stackPushOpen(symStack *stack);
 
 symStackItem* stackPosition(symStack *stack, int j);
 
-int reduction(symStack *stack); //TODO TOKNE TYPE
+int reduction(symStack *stack);
 
 void setGlobalVariables(Token* tok, tSymtable* glob);
 

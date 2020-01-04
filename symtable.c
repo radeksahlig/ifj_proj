@@ -1,4 +1,14 @@
-
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  symtable.c                                       *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
 
 #include "symtable.h"
 #include "string.h"
@@ -15,7 +25,6 @@ void BSTInit (tBSTNodePtr *RootPtr) {
 tBSTNodePtr BSTSearch (tBSTNodePtr RootPtr, char* K)	{
 //Funkce vyhledá uzel v BVS s klíčem K.
 	 if(RootPtr != NULL){
-		//printf("Hledám ve stromě --- Hledám : %s ... Root : %s\n", K, RootPtr->Key);
 		 if((strcmp(RootPtr->Key, K))== 0){
 			 return RootPtr;
 		 }else if((strcmp(K, RootPtr->Key)) < 0){
@@ -132,6 +141,11 @@ int symtableInsertF(tSymtable* tab, Dynamic_string* key){
 int symtableInsertV(tSymtable* tab, Dynamic_string* key){
 	tInsideVariable *data = malloc(sizeof(tInsideVariable));
 	data->dataType = 0;
+        data->integer = 0;
+	data->flt = 0.0;
+	Dynamic_string str;
+	d_string_init(&str);
+	data->string = &str;
 	return BSTInsert(&(tab->root), key, data, nVariable);
 }
 

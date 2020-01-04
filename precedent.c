@@ -1,3 +1,15 @@
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  precedent.c                                      *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -46,12 +58,14 @@ int precedent_analys(Token* help){
 		return a;	
 
 	}
+	
+
 	while(StackTopTerm(stack) != TOKEN_EOL && tokeng->type != TOKEN_EOL && tokeng->type != TOKEN_COLON)							// cyklus pobezi dokud nenarazi na znak konce radku
-	{
+	{	
 
-		get_token(tokeng);							// ziskame token
-		a = idkfunkce(stack, tokeng);				// zavolame funkci pro zpracovani tokenu
+		get_token(tokeng);					// ziskame token
 
+		a = idkfunkce(stack, tokeng);				// zavolame funkci pro zpracovani token
 		if (a != SYNTAX_OK)
 			return SEM_ERROR_OTHER;
 	}
@@ -88,7 +102,11 @@ int idkfunkce(symStack *stack, Token* token){
 				{
 					stackPushOpen(stack);				// jinak posle zacatek rozvoje
 					symstackPush(stack,TOKEN_STRING);				// a znak identifikatoru
-					stack->top->string = token->attribute.string;
+					Dynamic_string str;
+					d_string_init(&str);
+					stack->top->string = &str;
+					d_string_add_string(token->attribute.string, stack->top->string);
+					
 				}
 				else if (token->type == TOKEN_FLOAT)
 				{
@@ -124,6 +142,16 @@ int idkfunkce(symStack *stack, Token* token){
 
 					tInsideVariable* var_content;
 					var_content = promnena->content;
+					if(var_content->dataType == 0){
+						if(var_content->integer != 0){
+							var_content->dataType = 1;
+						}else if(var_content->string->length != 0){
+							var_content->dataType = 3;
+						}else if(var_content->flt != 0){
+							var_content->dataType = 2;
+						}
+					}
+
 					int typ = var_content->dataType;
 
 
@@ -348,15 +376,13 @@ Token_type StackTopTerm (symStack *stack){
 	symStack *temp = malloc(sizeof(symStack)); 
 	temp->top = stack->top;
 	Token_type tokenhelp;
-
 	if (temp->top == NULL)
 	{
 		return TOKEN_ERROR;
 	}
 	else
 	{
-		tokenhelp = symstackTop(temp);
-
+		tokenhelp = stack->top->tokenType;
 		while(tokenhelp > TOKEN_NEQ)
 		{
 	    	symStackItem* out = temp->top;
@@ -472,31 +498,31 @@ int reduction(symStack *stack){
 			}
 			if (help == TOKEN_INTEGER)
 			{
+				if(stack->top->nazev == NULL)
+					printf("PUSHS int@%d\n", stack->top->inte);
 				temp2->inte = stack->top->inte;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_INTEGER);
 				stack->top->inte = temp2->inte;
-				if(stack->top->nazev == NULL)
-					printf("PUSHS int@%d", stack->top->inte);
 				
 			}
 			else if (help == TOKEN_FLOAT)
 			{
+				if(stack->top->nazev == NULL)
+					printf("PUSHS float@%a\n", stack->top->flt);
 				stack->top->flt = temp2->flt;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_FLOAT);
 				stack->top->flt = temp2->flt;
-				if(stack->top->nazev == NULL)
-					printf("PUSHS float@%a", stack->top->flt);
 			}
 			else if (help ==TOKEN_STRING)
 			{
+				if(stack->top->nazev == NULL)
+					printf("PUSHS string@%s\n", stack->top->string->string);
 				temp2->string = stack->top->string;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_STRING);
 				stack->top->string = temp2->string;
-				if(stack->top->nazev == NULL)
-					printf("PUSHS string@%s", stack->top->string);
 			}
 			else
 			{
@@ -601,7 +627,7 @@ int reduction(symStack *stack){
 						stack->top->flt = 420.0;
 						printf("ADDS\n");
 					}
-					else if (druhej->tokenType == TOKEN_PREC_STRING && ctvrtej->tokenType ==TOKEN_PREC_STRING) 			//TODO
+					else if (druhej->tokenType == TOKEN_PREC_STRING && ctvrtej->tokenType ==TOKEN_PREC_STRING)
 					{
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_STRING);
@@ -643,7 +669,7 @@ int reduction(symStack *stack){
 						symstackPopMore(stack, 5);
 						symstackPush(stack, TOKEN_PREC_INTEGER);
 						stack->top->inte = 420;
-						printf("SUB\n");
+						printf("SUBS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType ==TOKEN_PREC_FLOAT)
 					{
@@ -672,7 +698,7 @@ int reduction(symStack *stack){
 					}
 					else
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 				}
 				else
@@ -700,11 +726,11 @@ int reduction(symStack *stack){
 				{
 					if (druhej->tokenType == TOKEN_PREC_INTEGER && druhej->inte == 0 )
 					{
-						return SYNTAX_ERROR;
+						return ZERO_DIVISION;
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && druhej->flt == 0)
 					{
-						return SYNTAX_ERROR;
+						return ZERO_DIVISION;
 					}
 
 					if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
@@ -751,7 +777,7 @@ int reduction(symStack *stack){
 					}
 					else
 					{
-						return SYNTAX_ERROR;	
+						return SEM_ERROR_TYPE;	
 					}
 				}
 			}
@@ -781,13 +807,13 @@ int reduction(symStack *stack){
 					}
 					else
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 					
 				}
 				else
 				{
-					return SYNTAX_ERROR;
+					return SEM_ERROR_TYPE;
 				}
 			}
 			else
@@ -842,7 +868,7 @@ int reduction(symStack *stack){
 					}
 					else
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 
 				}
@@ -926,7 +952,7 @@ int reduction(symStack *stack){
 					}
 					else 
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 
 				}
@@ -987,7 +1013,7 @@ int reduction(symStack *stack){
 					}
 					else 
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 				}
 				else
@@ -1069,7 +1095,7 @@ int reduction(symStack *stack){
 					}
 					else 
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 				}
 				else
@@ -1130,7 +1156,7 @@ int reduction(symStack *stack){
 					else 
 					{
 						
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 				}
 				else
@@ -1192,7 +1218,7 @@ int reduction(symStack *stack){
 					}
 					else 
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 				}
 				else
@@ -1260,7 +1286,7 @@ int reduction(symStack *stack){
 					}
 					else 
 					{
-						return SYNTAX_ERROR;
+						return SEM_ERROR_TYPE;
 					}
 				}
 				else

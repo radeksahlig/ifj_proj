@@ -1,3 +1,15 @@
+/*************************************************************
+*  Předmět: IFJ / IAL                                        *
+*  Projekt: Implementace compilátoru imperativního jazyka    *
+*  Soubor:  symstack.c                                       *
+*  Tým: 087                                                  *
+*  Varianta: 1                                               *
+*  Autoři:  Jan Pospíšil    <xpospi94>                       *
+*           Radek Sahliger  <xsahli00>                       *
+*           Michal Jireš    <xjires02>                       *
+*           Čermák Attila   <xcerma38>                       *
+**************************************************************/
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<stdarg.h>
@@ -18,6 +30,9 @@ bool symstackPush(symStack* stack, Token_type token){
     nitem->flt = 0.0;
     nitem->next = stack->top;
     nitem->nazev = NULL;
+    Dynamic_string str;
+    d_string_init(&str);
+    nitem->string = &str;
     stack->top = nitem;
     return true;
   }else{
@@ -29,7 +44,6 @@ bool symstackPop(symStack* stack){
   if(stack->top != NULL){
     symStackItem* out = stack->top;
     stack->top = out->next;
-
     free(out);
     
     return true;
