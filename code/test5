@@ -1,0 +1,10 @@
+# Hlavni telo programu
+print('Zadejte cislo pro vypocet faktorialu: ', '\n')
+a = 5
+if a < 0 : #ahoj
+ print('Faktorial nelze spocitat', '\n')
+else :
+ print('Vybrane a je :', a, '\n')
+ vysl = a * a
+ print('Vysledek je:', vysl, '\n')
+
