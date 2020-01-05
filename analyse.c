@@ -91,47 +91,6 @@ int not_defined = 0;
 bool in_function = false;
 int global_label = 1;
 
-int new_token(Token *token){
-	int retval= get_token(token);
-	switch(token->type){
-	    case TOKEN_EMPTY_FILE : printf("token_empty \n");break;
-	    case TOKEN_KEYWORD : printf("token_keyword \n");break;
-	    case TOKEN_ID :printf("token_id \n");break;
-	    case TOKEN_INTEGER : printf("token_int \n");break;
-	    case TOKEN_FLOAT : printf("token_float \n");break;
-	    case TOKEN_STRING : printf("token_string \n");break;
-	    case TOKEN_EOF : printf("token_eof \n");break;
-	    case TOKEN_EOL : printf("token_eol \n");break;
-	    case TOKEN_COMMA : printf("token_comma \n");break;
-	    case TOKEN_L_BRACKET : printf("token_( \n");break;
-	    case TOKEN_R_BRACKET : printf("token_) \n");break;
-	    case TOKEN_PLUS : printf("token_+ \n");break;
-	    case TOKEN_MINUS : printf("token_- \n");break;
-	    case TOKEN_MUL : printf("token_* \n");break;
-	    case TOKEN_FLOAT_DIV : printf("token_/ \n");break;
-	    case TOKEN_INT_DIV : printf("token_// \n");break;
-	    case TOKEN_MEQ : printf("token_>= \n");break;
-	    case TOKEN_MORE : printf("token_> \n");break;
-	    case TOKEN_LEQ : printf("token_<= \n");break;
-	    case TOKEN_LESS : printf("token_< \n");break;
-	    case TOKEN_EQ : printf("token_== \n");break;
-	    case TOKEN_COLON : printf("token_: \n");break;
-	    case TOKEN_ASSIGN : printf("token_= \n");break;
-	    case TOKEN_NEQ : printf("token_!= \n");break;
-	    case TOKEN_INDENT : printf("token_indent --------------->\n");break;
-	    case TOKEN_DEDENT : printf("token_dedent <---------------\n");break;
-	    default : printf("nemůže nastat !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
-	if(token->type == TOKEN_STRING){
-		printf(" ## %s ##\n", token->attribute.string->string);	
-	}
-	if(retval != 0){
-		printf("%d return new_token\n", retval);
-		return retval;}
-	return 0;
-}
-
-
 
 int prog(){
 	int retval;
