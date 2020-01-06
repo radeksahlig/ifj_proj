@@ -543,11 +543,11 @@ int reduction(symStack *stack){
 
 		if (i==5)
 		{
-			symStackItem* prvni = stackPosition(stack, 1);
-			symStackItem* druhej = stackPosition(stack, 2);
-			symStackItem* treti = stackPosition(stack, 3);
-			symStackItem* ctvrtej = stackPosition(stack, 4);
-			symStackItem* patej = stackPosition(stack, 5);
+			symStackItem* prvni = stackPosition(stack, 0);
+			symStackItem* druhej = stackPosition(stack, 1);
+			symStackItem* treti = stackPosition(stack, 2);
+			symStackItem* ctvrtej = stackPosition(stack, 3);
+			symStackItem* patej = stackPosition(stack, 4);
 			symStackItem* temp2 = malloc(sizeof(symStackItem));;
 
 			if (prvni->tokenType == TOKEN_PREC_CLOSE && patej->tokenType == TOKEN_PREC_OPEN && druhej->tokenType == TOKEN_R_BRACKET && ctvrtej->tokenType == TOKEN_L_BRACKET)
