@@ -91,7 +91,6 @@ int not_defined = 0;
 bool in_function = false;
 int global_label = 1;
 
-
 int prog(){
 	int retval;
     	int cur_indent = 0;
@@ -471,6 +470,7 @@ static int def(){
 			GET_TOKEN();
 			if((retval= arg(&a, false, &a, "")))
 				return retval;
+			printf("WRITE string@\\010\n");
 		}else{	
 			tBSTNodePtr funkce = symtableSearch(global, pid.attribute.string->string);
 			tInsideFunction* fce_content;
@@ -760,15 +760,20 @@ static int value(int count, char* fce){
 	if(strcmp(fce, "") != 0){
 		tBSTNodePtr prvfce = symtableSearch(global, fce);
 		tInsideFunction *content = prvfce->content;
-		tBSTNodePtr prom;	
-		if(count == 1)
-			prom = symtableSearch(content->local, content->prvniparam);
-		else
-			prom = symtableSearch(content->local, (char *)content->paramName[count]);
-		tInsideVariable *cnt = prom->content;
-		tInsideVariable *cntprom = funkce->content;
-   		cnt->dataType = cntprom->dataType;
+		if(content->defined){
+			tBSTNodePtr prom;
+			if(count == 1)
+				prom = symtableSearch(content->local, content->prvniparam);
+			else
+				prom = symtableSearch(content->local, (char *)content->paramName[count]);
+			tInsideVariable *cnt = prom->content;
+			tInsideVariable *cntprom = funkce->content;
+	   		cnt->dataType = cntprom->dataType;
+		}
 	}
+	return SYNTAX_OK;
+    }else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_NONE){
+	printf("string@None\n");
 	return SYNTAX_OK;
     }
     return SYNTAX_ERROR;
@@ -782,6 +787,10 @@ static int arg(int* param, bool sub, int* count, char* fce){
 			printf("WRITE ");
 			if((retval= value(0, "")))
 				return retval;
+			GET_TOKEN();
+			if(token.type != TOKEN_R_BRACKET)
+				printf("WRITE string@\\032\n");
+			return arg_n(param, sub, count, fce);
 		}else{
 			printf("DEFVAR TF@%%%d\n", (*count));
 			printf("MOVE TF@%%%d ", (*count)++);
@@ -810,6 +819,10 @@ static int arg_n(int* param, bool sub, int* count, char* fce){
 		GET_TOKEN();
 		if((retval= value(0, "")))
 			return retval;
+		GET_TOKEN();
+		if(token.type != TOKEN_R_BRACKET)
+			printf("WRITE string@\\032\n");
+		return arg_n(param, sub, count, fce);
 	}else{
 		
 		printf("DEFVAR TF@%%%d\n", (*count));
