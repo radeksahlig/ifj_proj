@@ -126,12 +126,14 @@ int prog(){
 						
 				param = fce_content->parameters;			
 				fce_content->parameters = 0;
-
-				local = malloc(sizeof(tSymtable));
-				symtableInit(local);
-				setLocTable(local);
-				fce_content->local = local;
-			}
+				
+				if(fce_content->local == NULL){
+					local = malloc(sizeof(tSymtable));
+					symtableInit(local);
+					setLocTable(local);
+					fce_content->local = local;
+				}		
+			}	
 		}else{//Funkce se vloží do symtabl
 			if((retval = symtableInsertF(global, token.attribute.string)))
 				return retval;
@@ -148,6 +150,7 @@ int prog(){
 			symtableInit(local);
 			setLocTable(local);
 			fce_content->local = local;
+			
 		}
 		
 
@@ -216,9 +219,15 @@ int prog(){
 		GET_TOKEN();
 		CHECK_PRECEDENCE(NULL);
 
-		printf("DEFVAR GF@$ifprom%d\n", label);
-		printf("POPS GF@$ifprom%d\n", label);
-		printf("JUMPIFNEQ $else$%d GF@$ifprom%d bool@true\n", label, label);
+		if(in_function){
+			printf("DEFVAR LF@$ifprom%d\n", label);
+			printf("POPS LF@$ifprom%d\n", label);			
+			printf("JUMPIFNEQ $else$%d LF@$ifprom%d bool@true\n", label, label);
+		}else{
+			printf("DEFVAR GF@$ifprom%d\n", label);
+			printf("POPS GF@$ifprom%d\n", label);			
+			printf("JUMPIFNEQ $else$%d GF@$ifprom%d bool@true\n", label, label);
+		}
 
 		if(token.type != TOKEN_COLON)
 			return SYNTAX_ERROR;
@@ -248,14 +257,21 @@ int prog(){
 		//5. <prog> -> while <expr> : EOL <stmt> EOL <prog>
 
 		printf("#Začátek while v progu\n");
-		printf("DEFVAR GF@$whileprom%d\n", label);
+		if(in_function)
+			printf("DEFVAR LF@$whileprom%d\n", label);
+		else		
+			printf("DEFVAR GF@$whileprom%d\n", label);
 		printf("LABEL $while$start%d\n", label);
 		GET_TOKEN();
 		CHECK_PRECEDENCE(NULL);
 		
-		printf("POPS GF@$whileprom%d\n", label);
-		printf("JUMPIFNEQ $while$end%d GF@$whileprom%d bool@true\n", label, label);
-
+		if(in_function){
+			printf("POPS LF@$whileprom%d\n", label);
+			printf("JUMPIFNEQ $while$end%d LF@$whileprom%d bool@true\n", label, label);
+		}else{
+			printf("POPS GF@$whileprom%d\n", label);
+			printf("JUMPIFNEQ $while$end%d GF@$whileprom%d bool@true\n", label, label);
+		}
 		if(token.type != TOKEN_COLON)
 			return SYNTAX_ERROR;
 		GET_TOKEN_CHECK_TYPE(TOKEN_EOL);
@@ -296,9 +312,16 @@ static int stmt(int prev_indent, int cur_indent){
 		GET_TOKEN(); 
 		CHECK_PRECEDENCE(NULL);
 
-		printf("DEFVAR GF@$ifprom%d\n", label);
-		printf("POPS GF@$ifprom%d\n", label);
-		printf("JUMPIFNEQ $else$%d GF@$ifprom%d bool@true\n", label, label);
+		if(in_function){
+			printf("DEFVAR LF@$ifprom%d\n", label);
+			printf("POPS LF@$ifprom%d\n", label);
+			printf("JUMPIFNEQ $else$%d LF@$ifprom%d bool@true\n", label, label);
+		}else{
+			printf("DEFVAR GF@$ifprom%d\n", label);
+			printf("POPS GF@$ifprom%d\n", label);
+			printf("JUMPIFNEQ $else$%d GF@$ifprom%d bool@true\n", label, label);
+		}
+
 		//podmínka skoku
 
 		if(token.type != TOKEN_COLON)
@@ -329,14 +352,22 @@ static int stmt(int prev_indent, int cur_indent){
 		//9. <stmt> ->  while <expr> : EOL <stmt> EOL <stmt>
 
 		printf("#Začátek while v stmt\n");
-		printf("DEFVAR GF@$whileprom%d\n", label);
+		if(in_function)
+			printf("DEFVAR LF@$whileprom%d\n", label);
+		else
+			printf("DEFVAR GF@$whileprom%d\n", label);
 		printf("LABEL $while$start%d\n", label);
 
 		GET_TOKEN();
 		CHECK_PRECEDENCE(NULL);
 
-		printf("POPS GF@$whileprom%d\n", label);
-		printf("JUMPIFNEQ $while$konec%d GF@$whileprom%d bool@true\n", label, label);
+		if(in_function){
+			printf("POPS LF@$whileprom%d\n", label);
+			printf("JUMPIFNEQ $while$konec%d LF@$whileprom%d bool@true\n", label, label);
+		}else{
+			printf("POPS GF@$whileprom%d\n", label);
+			printf("JUMPIFNEQ $while$konec%d GF@$whileprom%d bool@true\n", label, label);
+		}
 		//Podmíněný skok
 
 		if(token.type != TOKEN_COLON)
@@ -368,7 +399,7 @@ static int stmt(int prev_indent, int cur_indent){
 		//10. <stmt> -> EOL <stmt>
 		GET_TOKEN();
 		return stmt(prev_indent, cur_indent);
-	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_RETURN){
+	}else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_RETURN && in_function){
 		//12. <stmt> -> return <expr> EOL <stmt>
 		GET_TOKEN();
 		CHECK_PRECEDENCE(NULL);
@@ -408,11 +439,27 @@ static int params(tInsideFunction* funkce){
 		
 	initVariable(idcko->content);
 
+	tInsideVariable *content = idcko->content;
+	
+	
+	char tempParamName[] = "6";
+	char c = 'a';
+	
+	for(int i = 0; i <= funkce->parameters; i++)
+		strncat(tempParamName, &c, 1);
+
+	tBSTNodePtr tempParam = symtableSearch(local, tempParamName);
+	
+	
+	if(tempParam != NULL){
+		tInsideVariable *tempcnt = tempParam->content;
+		content->dataType = tempcnt->dataType;
+	}else{
+		content->dataType = 1;
+	}
+		
 	strcpy((char *) funkce->paramName[funkce->parameters],token.attribute.string->string);
 	funkce->parameters += 1;
-	
-	tInsideVariable* content = idcko->content;
-	content->dataType = 1;
 
 	GET_TOKEN();
         return param_n(funkce);
@@ -439,16 +486,31 @@ static int param_n(tInsideFunction* funkce){
 		idcko = symtableSearch(local, token.attribute.string->string);
 		if(idcko == NULL)
 			return INTERNAL_ERROR;
-
+	
 		initVariable(idcko->content);
+
+		tInsideVariable *content = idcko->content;
+		
+		char tempParamName[] = "6";
+		char c = 'a';
+	
+		for(int i = 0; i <= funkce->parameters; i++)
+			strncat(tempParamName, &c, 1);
+
+		tBSTNodePtr tempParam = symtableSearch(local, tempParamName);
+
+		if(tempParam != NULL){
+			tInsideVariable *tempcnt = tempParam->content;
+			content->dataType = tempcnt->dataType;
+			
+		}else{
+			content->dataType = 1;
+		}
 
 		strcpy((char *)funkce->paramName[funkce->parameters],token.attribute.string->string);
 		if(funkce->parameters == 1)
 			strcpy(funkce->prvniparam, token.attribute.string->string);
 		funkce->parameters += 1;
-		
-		tInsideVariable* content = idcko->content;
-		content->dataType = 1;
 
 		GET_TOKEN();
 		return param_n(funkce);	
@@ -482,6 +544,11 @@ static int def(){
 					return INTERNAL_ERROR;
 
 				fce_content = funkce->content;
+
+				local = malloc(sizeof(tSymtable));
+				symtableInit(local);
+				fce_content->local = local;
+
 				fce_content->declared = true;
 				fce_content->defined = false;
 				not_defined += 1;
@@ -618,6 +685,11 @@ static int rovn(Token* pid, char* lastid){
 				return INTERNAL_ERROR;
 
 			fce_content = funkce->content;
+
+			local = malloc(sizeof(tSymtable));
+			symtableInit(local);
+			fce_content->local = local;
+
 			fce_content->declared = true;
 			fce_content->defined = false;
 			not_defined += 1;
@@ -640,7 +712,6 @@ static int rovn(Token* pid, char* lastid){
 		int count = 1;
 		if((retval= arg(&param, fce_content->defined, &count, fce)))
 			return retval;
-
 		//Kontrola počtu parametrů
 		if(fce_content->defined){
 			if(param != 0)
@@ -693,9 +764,6 @@ static int rovn(Token* pid, char* lastid){
 	}
 
 	if(token.attribute.keyword == RET_STRING){//Je to string
-		free(var_content->string->string);
-		var_content->string->length = 0;
-		d_string_add_string(token.attribute.string, var_content->string);
 		var_content->dataType = 3;
 	}else if(token.attribute.keyword == RET_INT){//Je to int
 		var_content->integer = token.attribute.integer;
@@ -757,20 +825,42 @@ static int value(int count, char* fce){
 	}
 	printf("%s\n", token.attribute.string->string);
 
-	if(strcmp(fce, "") != 0){
+	//Humus pro dataType <-----------------------
+	if(!(strcmp(fce, "") == 0 || strcmp(fce, "len") == 0 || strcmp(fce, "ord") == 0 || strcmp(fce, "chr") == 0 || strcmp(fce, "substr") == 0 || strcmp(fce, "inputi") == 0 || strcmp(fce, "inputf") == 0 || strcmp(fce, "inputs") == 0)){
 		tBSTNodePtr prvfce = symtableSearch(global, fce);
 		tInsideFunction *content = prvfce->content;
-		if(content->defined){
-			tBSTNodePtr prom;
-			if(count == 1)
-				prom = symtableSearch(content->local, content->prvniparam);
-			else
-				prom = symtableSearch(content->local, (char *)content->paramName[count]);
-			tInsideVariable *cnt = prom->content;
-			tInsideVariable *cntprom = funkce->content;
-	   		cnt->dataType = cntprom->dataType;
+
+		Dynamic_string str;
+		d_string_init(&str);
+		
+		d_string_add_char(&str, '6');
+
+		for(int i = 0; i <= count; i++)
+			d_string_add_char(&str, 'a');		
+
+		tBSTNodePtr idcko = symtableSearch(content->local, str.string);
+		if(idcko == NULL){
+			int retval = 0;
+			if((retval = symtableInsertF(content->local, &str)))
+				return retval;
+
+			idcko = symtableSearch(content->local, str.string);
+			if(idcko == NULL)
+				return INTERNAL_ERROR;
+
+			initVariable(idcko->content);
+
+			tInsideVariable *cnt = funkce->content;
+			tInsideVariable *cntprom = idcko->content;
+			cntprom->dataType = cnt->dataType;
+		}else{
+			tInsideVariable *cnt = funkce->content;
+			tInsideVariable *cntprom = idcko->content;
+			if(cnt->dataType != cntprom->dataType)
+				return SEM_ERROR_OTHER;
 		}
 	}
+
 	return SYNTAX_OK;
     }else if(token.type == TOKEN_KEYWORD && token.attribute.keyword == KEYWORD_NONE){
 	printf("string@None\n");

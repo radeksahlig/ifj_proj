@@ -60,7 +60,7 @@ int precedent_analys(Token* help){
 	}
 	
 
-	while(StackTopTerm(stack) != TOKEN_EOL && tokeng->type != TOKEN_EOL && tokeng->type != TOKEN_COLON)							// cyklus pobezi dokud nenarazi na znak konce radku
+	while(!(StackTopTerm(stack) == TOKEN_EOL && (tokeng->type == TOKEN_EOL || tokeng->type == TOKEN_COLON)))							// cyklus pobezi dokud nenarazi na znak konce radku
 	{	
 
 		get_token(tokeng);					// ziskame token
@@ -102,11 +102,7 @@ int idkfunkce(symStack *stack, Token* token){
 				{
 					stackPushOpen(stack);				// jinak posle zacatek rozvoje
 					symstackPush(stack,TOKEN_STRING);				// a znak identifikatoru
-					Dynamic_string str;
-					d_string_init(&str);
-					stack->top->string = &str;
-					d_string_add_string(token->attribute.string, stack->top->string);
-					
+					stack->top->string = token->attribute.string;			
 				}
 				else if (token->type == TOKEN_FLOAT)
 				{
@@ -488,10 +484,12 @@ int reduction(symStack *stack){
 			symStackItem* temp2 = malloc(sizeof(symStackItem));
 			if(stack->top->nazev != NULL){
 				if(in_function2){
-					if(symtableSearch(global, stack->top->nazev) == NULL)
+					if(symtableSearch(local, stack->top->nazev) != NULL)
 						printf("PUSHS LF@%s\n", stack->top->nazev);
-					else
+					else if(symtableSearch(global, stack->top->nazev) != NULL)
 						printf("PUSHS GF@%s\n", stack->top->nazev);
+					else
+						return SEM_ERROR_DEF;
 				}else{
 					printf("PUSHS GF@%s\n", stack->top->nazev);
 				}
@@ -517,8 +515,23 @@ int reduction(symStack *stack){
 			}
 			else if (help ==TOKEN_STRING)
 			{
-				if(stack->top->nazev == NULL)
-					printf("PUSHS string@%s\n", stack->top->string->string);
+				if(stack->top->nazev == NULL){
+					printf("PUSHS string@");
+					for (int i = 0; i < stack->top->string->length; i++){
+						char c = stack->top->string->string[i];
+						int ascii = (int)c;
+						if(ascii <= 32 || ascii == 35 || ascii == 92){
+							if(ascii < 10){
+								printf("\\00%d", ascii);
+							}else{
+								printf("\\0%d", ascii);
+							}
+						}else{
+							printf("%c", c);		
+						}
+					}
+					printf("\n");
+				}
 				temp2->string = stack->top->string;
 				symstackPopMore(stack, 2);
 				symstackPush(stack,TOKEN_PREC_STRING);
@@ -561,13 +574,14 @@ int reduction(symStack *stack){
 				stack->top->inte = temp2->inte;
 				stack->top->flt = temp2->flt;
 				stack->top->string = temp2->string;
+				free(temp2);
+				return SYNTAX_OK;
 			}
 			else
 			{
 				free(temp2);
 				return SYNTAX_ERROR;
 			}
-			free(temp2);
 		}
 		else
 		{
@@ -844,14 +858,14 @@ int reduction(symStack *stack){
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_INTEGER);
+						symstackPush(stack, TOKEN_PREC_FLOAT);
 						stack->top->flt = 42.0;
 						printf("MULS\n");
 					}
 					else if (druhej->tokenType == TOKEN_PREC_FLOAT && ctvrtej->tokenType == TOKEN_PREC_INTEGER)
 					{
 						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_INTEGER);
+						symstackPush(stack, TOKEN_PREC_FLOAT);
 						stack->top->flt = 42.0;
 						printf("POPS GF@?AX?\n");
 						printf("INT2FLOATS\n");
@@ -861,7 +875,7 @@ int reduction(symStack *stack){
 					else if (druhej->tokenType == TOKEN_PREC_INTEGER && ctvrtej->tokenType == TOKEN_PREC_FLOAT)
 					{
 						symstackPopMore(stack, 5);
-						symstackPush(stack, TOKEN_PREC_INTEGER);
+						symstackPush(stack, TOKEN_PREC_FLOAT);
 						stack->top->flt = 42.0;
 						printf("INT2FLOATS\n");
 						printf("MULS\n");

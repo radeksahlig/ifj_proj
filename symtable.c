@@ -143,9 +143,6 @@ int symtableInsertV(tSymtable* tab, Dynamic_string* key){
 	data->dataType = 0;
         data->integer = 0;
 	data->flt = 0.0;
-	Dynamic_string str;
-	d_string_init(&str);
-	data->string = &str;
 	return BSTInsert(&(tab->root), key, data, nVariable);
 }
 
