@@ -1,5 +1,6 @@
 # Program 2: Vypocet faktorialu (rekurzivne)
 def factorial(n):
+ result = 0
  if n < 2:
   result = n
  else:

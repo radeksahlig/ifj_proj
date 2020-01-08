@@ -1,5 +1,10 @@
-if 1 < 2 :
- a = 2.5 + 5
-else :
- b = a + 4
-c = a * b
+a = 2.5 + 5
+c = (((a * 4) + (a - 5)) * (10 / 5))
+"""Nějekj blokovej koment
+
+
+
+asi tu
+"""
+print(a,c)
+
