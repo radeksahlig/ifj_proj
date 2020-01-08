@@ -635,8 +635,8 @@ int get_token(Token *token){
                     scanner_state = SECOND_QUOTE_END;
                 }
 		else if(c == EOF){
-                    return free_the_stuff(SCANNER_ERROR, str);
-                }
+		    return free_the_stuff(SCANNER_ERROR,str);
+		}
                 else{
                     scanner_state = DOC_STRING_STATE;
                 }
