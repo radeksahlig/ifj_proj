@@ -572,7 +572,6 @@ int get_token(Token *token){
             case (HEXA_FIRST_STATE):
                 if(isdigit(c) || tolower(c) == 'a' || tolower(c) == 'b' || tolower(c) == 'c' || tolower(c) == 'd' || tolower(c) == 'e' || tolower(c) == 'f'){
                     hexa[0] = (char) c;
-                    printf("%c\n", hexa[0]);
                     scanner_state = HEXA_SECOND_STATE;
                 }
                 else{
@@ -689,6 +688,7 @@ int get_token(Token *token){
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
+                break;
             
             case (LESS_STATE):
                 if (c == '='){
@@ -701,6 +701,8 @@ int get_token(Token *token){
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
+                break;
+
             case (EQ_STATE):
                 if (c == '='){
                     token->type = TOKEN_EQ;
@@ -711,6 +713,8 @@ int get_token(Token *token){
                     return free_the_stuff(SCANNER_OK, str);
                 }
 
+                break;
+
             case (NEQ_STATE):
                 if (c == '='){
                     token->type = TOKEN_NEQ;
@@ -719,6 +723,8 @@ int get_token(Token *token){
                 else{
                     return free_the_stuff(SCANNER_ERROR, str);
                 }
+
+                break;
             
         }
     }
